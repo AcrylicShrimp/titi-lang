@@ -277,7 +277,83 @@ impl Lexer {
                         }
                     }
                 }
-                '"' => {}
+                '"' => {
+                    token_builder!(self, builder, content);
+                    content.push('"');
+                    self.index += 1;
+                    self.line_offset += 1;
+
+                    let mut error = None;
+                    let mut literal = Vec::with_capacity(2);
+
+                    loop {
+                        if !self.remain() {
+                            error = Some(TokenError::CharLiteralNotTerminated);
+                            break;
+                        }
+
+                        let mut current = unsafe { self.current() };
+
+                        match current {
+                            '\\' => {
+                                content.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+
+                                if !self.remain() {
+                                    error = Some(TokenError::StrLiteralNotTerminated);
+                                    break;
+                                }
+
+                                current = unsafe { self.current() };
+
+                                if current == '\n' {
+                                    error = Some(TokenError::StrLiteralNotTerminated);
+                                    break;
+                                }
+
+                                content.push(current);
+                                literal.push(match current {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    '\\' => '\\',
+                                    '0' => '\0',
+                                    '\'' => '\'',
+                                    '"' => '"',
+                                    _ => current,
+                                });
+                                self.index += 1;
+                                self.line_offset += 1;
+                            }
+                            '"' => {
+                                content.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+                                break;
+                            }
+                            '\n' => {
+                                error = Some(TokenError::StrLiteralNotTerminated);
+                                break;
+                            }
+                            _ => {
+                                content.push(current);
+                                literal.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+                            }
+                        }
+                    }
+
+                    if let Some(error) = error {
+                        return builder.build(TokenType::Error(error), content);
+                    }
+
+                    return builder.build(
+                        TokenType::LiteralStr(literal.into_iter().collect::<String>()),
+                        content,
+                    );
+                }
                 '@' => try_character!(self, {
                     '"' => {
 
@@ -292,7 +368,7 @@ impl Lexer {
             while self.remain() {
                 let current = unsafe { self.current() };
 
-                if current.is_whitespace() || current.is_ascii_punctuation() {
+                if current.is_whitespace() || current.is_ascii_punctuation() && current != '_' {
                     break;
                 }
 
@@ -330,8 +406,8 @@ impl Lexer {
                 "for" => return builder.build(TokenType::KeywordFor, content),
                 "in" => return builder.build(TokenType::KeywordIn, content),
                 "as" => return builder.build(TokenType::KeywordAs, content),
-                "true" => return builder.build(TokenType::LiteralBool, content),
-                "false" => return builder.build(TokenType::LiteralBool, content),
+                "true" => return builder.build(TokenType::LiteralBool(true), content),
+                "false" => return builder.build(TokenType::LiteralBool(false), content),
                 _ => return builder.build(TokenType::Id, content),
             }
         }

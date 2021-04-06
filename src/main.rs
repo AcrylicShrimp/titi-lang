@@ -17,16 +17,17 @@ fn main() {
     '\n';
     '\0';
 
+    "this is a str \n literal!";
+
     "#,
     );
     let mut tokens = Vec::new();
 
     loop {
         let token = lexer.parse();
-        let token_ty = token.ty();
         tokens.push(token);
 
-        if token_ty == compiler::TokenType::Eof {
+        if *tokens.last().unwrap().ty() == compiler::TokenType::Eof {
             break;
         }
     }

@@ -36,8 +36,8 @@ impl Token {
         self.line_offset
     }
 
-    pub fn ty(&self) -> TokenType {
-        self.ty
+    pub fn ty(&self) -> &TokenType {
+        &self.ty
     }
 
     pub fn content(&self) -> &String {
@@ -45,7 +45,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     Error(TokenError),
     Eof,               // EOF
@@ -109,7 +109,7 @@ pub enum TokenType {
     KeywordFor,        // for
     KeywordIn,         // in
     KeywordAs,         // as
-    LiteralBool,
+    LiteralBool(bool),
     LiteralByte,
     LiteralChar(char),
     LiteralI64,
@@ -120,7 +120,7 @@ pub enum TokenType {
     LiteralF64,
     LiteralInteger,
     LiteralDecimal,
-    LiteralStr,
+    LiteralStr(String),
     Id,
 }
 
@@ -130,4 +130,5 @@ pub enum TokenError {
     CharLiteralNotTerminated,
     CharLiteralEmpty,
     CharLiteralTooLong,
+    StrLiteralNotTerminated,
 }
