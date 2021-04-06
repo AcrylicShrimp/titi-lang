@@ -288,7 +288,7 @@ impl Lexer {
 
                     loop {
                         if !self.remain() {
-                            error = Some(TokenError::CharLiteralNotTerminated);
+                            error = Some(TokenError::StrLiteralNotTerminated);
                             break;
                         }
 
@@ -356,7 +356,99 @@ impl Lexer {
                 }
                 '@' => try_character!(self, {
                     '"' => {
+                        token_builder!(self, builder, content);
+                        content.push('@');
+                        content.push('"');
+                        self.index += 2;
+                        self.line_offset += 2;
 
+                        let mut error = None;
+                        let mut literal = Vec::with_capacity(2);
+
+                        loop {
+                            if !self.remain() {
+                                error = Some(TokenError::StrLiteralNotTerminated);
+                                break;
+                            }
+
+                            let mut current = unsafe { self.current() };
+
+                            match current {
+                                '\\' => {
+                                    content.push(current);
+                                    self.index += 1;
+                                    self.line_offset += 1;
+
+                                    if !self.remain() {
+                                        error = Some(TokenError::StrLiteralNotTerminated);
+                                        break;
+                                    }
+
+                                    current = unsafe { self.current() };
+                                    content.push(current);
+                                    literal.push(match current {
+                                        'n' => '\n',
+                                        'r' => '\r',
+                                        't' => '\t',
+                                        '\\' => '\\',
+                                        '0' => '\0',
+                                        '\'' => '\'',
+                                        '"' => '"',
+                                        _ => current,
+                                    });
+                                    self.index += 1;
+                                    self.line_offset += 1;
+
+                                    if current == '\n' {
+                                        self.line += 1;
+                                        self.line_offset = 1;
+                                    }
+                                }
+                                '"' => {
+                                    content.push(current);
+                                    self.index += 1;
+                                    self.line_offset += 1;
+
+                                    if !self.remain() {
+                                        error = Some(TokenError::StrLiteralNotTerminated);
+                                        break;
+                                    }
+
+                                    current = unsafe { self.current() };
+                                    content.push(current);
+
+                                    if current == '@' {
+                                        self.index += 1;
+                                        self.line_offset += 1;
+                                        break;
+                                    }
+
+                                    literal.push('"');
+                                }
+                                '\n' => {
+                                    content.push(current);
+                                    literal.push(current);
+                                    self.index += 1;
+                                    self.line += 1;
+                                    self.line_offset = 1;
+                                }
+                                _ => {
+                                    content.push(current);
+                                    literal.push(current);
+                                    self.index += 1;
+                                    self.line_offset += 1;
+                                }
+                            }
+                        }
+
+                        if let Some(error) = error {
+                            return builder.build(TokenType::Error(error), content);
+                        }
+
+                        return builder.build(
+                            TokenType::LiteralStr(literal.into_iter().collect::<String>()),
+                            content,
+                        );
                     }
                     _ => { return token!(self, TokenType::Error(TokenError::Unknown), "@"); }
                 }),

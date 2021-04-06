@@ -19,6 +19,16 @@ fn main() {
 
     "this is a str \n literal!";
 
+    @"
+    This
+    is
+    a
+    multi-
+    line
+    str
+    literal!
+    "@;
+
     "#,
     );
     let mut tokens = Vec::new();
