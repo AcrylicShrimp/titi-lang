@@ -196,41 +196,93 @@ impl Lexer {
                 '\'' => {
                     token_builder!(self, builder, content);
                     content.push('\'');
+                    self.index += 1;
+                    self.line_offset += 1;
 
-                    let index = self.index + 1;
+                    let mut error = None;
+                    let mut literal = Vec::with_capacity(2);
 
-                    if self.max_index <= index {
-                        return builder.build(
-                            TokenType::Error(TokenError::NotTerminatedCharacterLiteral),
-                            content,
-                        );
+                    loop {
+                        if !self.remain() {
+                            error = Some(TokenError::CharLiteralNotTerminated);
+                            break;
+                        }
+
+                        let mut current = unsafe { self.current() };
+
+                        match current {
+                            '\\' => {
+                                content.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+
+                                if !self.remain() {
+                                    error = Some(TokenError::CharLiteralNotTerminated);
+                                    break;
+                                }
+
+                                current = unsafe { self.current() };
+
+                                if current == '\n' {
+                                    error = Some(TokenError::CharLiteralNotTerminated);
+                                    break;
+                                }
+
+                                content.push(current);
+                                literal.push(match current {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    '\\' => '\\',
+                                    '0' => '\0',
+                                    '\'' => '\'',
+                                    '"' => '"',
+                                    _ => current,
+                                });
+                                self.index += 1;
+                                self.line_offset += 1;
+                            }
+                            '\'' => {
+                                content.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+                                break;
+                            }
+                            '\n' => {
+                                error = Some(TokenError::CharLiteralNotTerminated);
+                                break;
+                            }
+                            _ => {
+                                content.push(current);
+                                literal.push(current);
+                                self.index += 1;
+                                self.line_offset += 1;
+                            }
+                        }
                     }
 
-                    let current = unsafe { self.current() };
-
-                    if current == '\\' {
-                        content.push(current);
-                    } else if current == '\'' {
+                    if let Some(error) = error {
+                        return builder.build(TokenType::Error(error), content);
                     }
 
-                    // while self.remain() {
-                    //     let current = unsafe { self.current() };
-
-                    //     match current => {
-
-                    //     }
-
-                    //     if current == '\'' {
-                    //         break;
-                    //     }
-                    // }
+                    match literal.len() {
+                        0 => {
+                            return builder
+                                .build(TokenType::Error(TokenError::CharLiteralEmpty), content)
+                        }
+                        1 => return builder.build(TokenType::LiteralChar(literal[0]), content),
+                        _ => {
+                            return builder
+                                .build(TokenType::Error(TokenError::CharLiteralTooLong), content)
+                        }
+                    }
                 }
                 '"' => {}
                 '@' => try_character!(self, {
                     '"' => {
 
                     }
-                    _ => { return token!(self, TokenType::Unknown, "@"); }
+                    _ => { return token!(self, TokenType::Error(TokenError::Unknown), "@"); }
                 }),
                 _ => {}
             }
@@ -250,13 +302,19 @@ impl Lexer {
             }
 
             match content.as_str() {
-                "" => return token!(self, TokenType::Unknown, current.to_string()),
+                "" => {
+                    return token!(
+                        self,
+                        TokenType::Error(TokenError::Unknown),
+                        current.to_string()
+                    )
+                }
                 "or" => return builder.build(TokenType::OpLogOr, content),
                 "and" => return builder.build(TokenType::OpLogAnd, content),
                 "not" => return builder.build(TokenType::OpLogNot, content),
                 "bool" => return builder.build(TokenType::KeywordBool, content),
                 "byte" => return builder.build(TokenType::KeywordByte, content),
-                "char" => return builder.build(TokenType::KeywordByte, content),
+                "char" => return builder.build(TokenType::KeywordChar, content),
                 "i64" => return builder.build(TokenType::KeywordI64, content),
                 "u64" => return builder.build(TokenType::KeywordU64, content),
                 "isize" => return builder.build(TokenType::KeywordIsize, content),

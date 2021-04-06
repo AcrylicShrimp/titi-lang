@@ -111,6 +111,7 @@ pub enum TokenType {
     KeywordAs,         // as
     LiteralBool,
     LiteralByte,
+    LiteralChar(char),
     LiteralI64,
     LiteralU64,
     LiteralIsize,
@@ -126,5 +127,7 @@ pub enum TokenType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenError {
     Unknown,
-    NotTerminatedCharacterLiteral,
+    CharLiteralNotTerminated,
+    CharLiteralEmpty,
+    CharLiteralTooLong,
 }
