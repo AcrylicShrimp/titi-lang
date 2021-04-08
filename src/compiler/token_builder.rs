@@ -1,4 +1,4 @@
-use crate::compiler::{Token, TokenType};
+use crate::compiler::*;
 
 pub struct TokenBuilder {
     index: usize,

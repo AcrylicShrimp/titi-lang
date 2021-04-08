@@ -34,7 +34,7 @@ fn main() {
     let mut tokens = Vec::new();
 
     loop {
-        let token = lexer.parse();
+        let token = lexer.next();
         tokens.push(token);
 
         if *tokens.last().unwrap().ty() == compiler::TokenType::Eof {

@@ -1,4 +1,4 @@
-use crate::compiler::{Token, TokenBuilder, TokenError, TokenType};
+use crate::compiler::*;
 
 macro_rules! token {
     ($self:ident, $ty:expr, $content:expr) => {{
@@ -69,7 +69,7 @@ impl Lexer {
         self.characters[self.index]
     }
 
-    pub fn parse(&mut self) -> Token {
+    pub fn next(&mut self) -> Token {
         loop {
             if !self.remain() {
                 return Token::new(
@@ -491,6 +491,7 @@ impl Lexer {
                 "f64" => return builder.build(TokenType::KeywordF64, content),
                 "cptr" => return builder.build(TokenType::KeywordCptr, content),
                 "mptr" => return builder.build(TokenType::KeywordMptr, content),
+                "use" => return builder.build(TokenType::KeywordUse, content),
                 "let" => return builder.build(TokenType::KeywordLet, content),
                 "fn" => return builder.build(TokenType::KeywordFn, content),
                 "if" => return builder.build(TokenType::KeywordIf, content),

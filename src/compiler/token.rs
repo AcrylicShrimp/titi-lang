@@ -102,6 +102,7 @@ pub enum TokenType {
     KeywordF64,        // f64
     KeywordCptr,       // cptr
     KeywordMptr,       // mptr
+    KeywordUse,        // use
     KeywordLet,        // let
     KeywordFn,         // fn
     KeywordIf,         // if
