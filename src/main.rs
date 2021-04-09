@@ -1,46 +1,15 @@
 mod compiler;
 
 fn main() {
-    let mut lexer = compiler::Lexer::new(
+    let ast = compiler::parse(compiler::Lexer::new(
         r#"
     
-    # This is a comment!
-
-    ' ';
-    '      ';
-    '';
-    '
-    ';
-    'w';
-    '\\';
-    '\'';
-    '\n';
-    '\0';
-
-    "this is a str \n literal!";
-
-    @"
-    This
-    is
-    a
-    multi-
-    line
-    str
-    literal!
-    "@;
-
-    "#,
-    );
-    let mut tokens = Vec::new();
-
-    loop {
-        let token = lexer.next();
-        tokens.push(token);
-
-        if *tokens.last().unwrap().ty() == compiler::TokenType::Eof {
-            break;
-        }
+    if a == 10 {
+        print('%s', a + 2);
     }
-
-    println!("{:#?}", tokens);
+    
+    "#
+        .to_owned(),
+    ));
+    println!("{:#?}", ast);
 }
