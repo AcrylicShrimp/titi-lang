@@ -229,8 +229,8 @@ impl Lexer {
                     '>' => try_character! {
                         self,
                         index,
-                        '=' => return lit! { self, TokenType::OpAssignBitShiftR, ">=" },
-                        _ => return lit! { self, TokenType::OpBitShiftR, ">" }
+                        '=' => return lit! { self, TokenType::OpAssignBitShiftR, ">>=" },
+                        _ => return lit! { self, TokenType::OpBitShiftR, ">>" }
                     },
                     '=' => return lit! { self, TokenType::OpCmpGtEq, ">=" },
                     _ => return lit! { self, TokenType::OpCmpGt, ">" }
@@ -765,6 +765,149 @@ mod tests {
                 TokenType::PuncDot,
                 TokenType::PuncComma,
                 TokenType::PuncSemicolon,
+            ]
+        );
+
+        let input = input.chars().rev().collect::<String>();
+        let tokens = utils::collect_all_tokens(&input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::PuncParenL,
+                TokenType::PuncParenR,
+                TokenType::PuncBraceL,
+                TokenType::PuncBraceR,
+                TokenType::PuncBracketL,
+                TokenType::PuncBracketR,
+                TokenType::PuncDot,
+                TokenType::PuncComma,
+                TokenType::PuncSemicolon,
+            ]
+            .iter()
+            .rev()
+            .cloned()
+            .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_ops() {
+        let input = "=+=-=*=/=%=<<=>>=|=&=^=~=or and not==!=< <=> >=+-*/%<<>>|&^~";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::OpAssign,
+                TokenType::OpAssignAdd,
+                TokenType::OpAssignSub,
+                TokenType::OpAssignMul,
+                TokenType::OpAssignDiv,
+                TokenType::OpAssignMod,
+                TokenType::OpAssignBitShiftL,
+                TokenType::OpAssignBitShiftR,
+                TokenType::OpAssignBitOr,
+                TokenType::OpAssignBitAnd,
+                TokenType::OpAssignBitXor,
+                TokenType::OpAssignBitNot,
+                TokenType::OpLogOr,
+                TokenType::OpLogAnd,
+                TokenType::OpLogNot,
+                TokenType::OpCmpEq,
+                TokenType::OpCmpNeq,
+                TokenType::OpCmpLs,
+                TokenType::OpCmpLsEq,
+                TokenType::OpCmpGt,
+                TokenType::OpCmpGtEq,
+                TokenType::OpAdd,
+                TokenType::OpSub,
+                TokenType::OpMul,
+                TokenType::OpDiv,
+                TokenType::OpMod,
+                TokenType::OpBitShiftL,
+                TokenType::OpBitShiftR,
+                TokenType::OpBitOr,
+                TokenType::OpBitAnd,
+                TokenType::OpBitXor,
+                TokenType::OpBitNot,
+            ]
+        );
+
+        let input = "~^&|>><<%/*-+>=><=<!===not and or~=^=&=|=>>=<<=%=/=*=-=+==";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::OpAssign,
+                TokenType::OpAssignAdd,
+                TokenType::OpAssignSub,
+                TokenType::OpAssignMul,
+                TokenType::OpAssignDiv,
+                TokenType::OpAssignMod,
+                TokenType::OpAssignBitShiftL,
+                TokenType::OpAssignBitShiftR,
+                TokenType::OpAssignBitOr,
+                TokenType::OpAssignBitAnd,
+                TokenType::OpAssignBitXor,
+                TokenType::OpAssignBitNot,
+                TokenType::OpLogOr,
+                TokenType::OpLogAnd,
+                TokenType::OpLogNot,
+                TokenType::OpCmpEq,
+                TokenType::OpCmpNeq,
+                TokenType::OpCmpLs,
+                TokenType::OpCmpLsEq,
+                TokenType::OpCmpGt,
+                TokenType::OpCmpGtEq,
+                TokenType::OpAdd,
+                TokenType::OpSub,
+                TokenType::OpMul,
+                TokenType::OpDiv,
+                TokenType::OpMod,
+                TokenType::OpBitShiftL,
+                TokenType::OpBitShiftR,
+                TokenType::OpBitOr,
+                TokenType::OpBitAnd,
+                TokenType::OpBitXor,
+                TokenType::OpBitNot,
+            ]
+            .iter()
+            .rev()
+            .cloned()
+            .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_keywords() {
+        let input =
+            "bool byte char i64 u64 isize usize f32 f64 cptr mptr use let fn if else for in as";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::KeywordBool,
+                TokenType::KeywordByte,
+                TokenType::KeywordChar,
+                TokenType::KeywordI64,
+                TokenType::KeywordU64,
+                TokenType::KeywordIsize,
+                TokenType::KeywordUsize,
+                TokenType::KeywordF32,
+                TokenType::KeywordF64,
+                TokenType::KeywordCptr,
+                TokenType::KeywordMptr,
+                TokenType::KeywordUse,
+                TokenType::KeywordLet,
+                TokenType::KeywordFn,
+                TokenType::KeywordIf,
+                TokenType::KeywordElse,
+                TokenType::KeywordFor,
+                TokenType::KeywordIn,
+                TokenType::KeywordAs,
             ]
         );
     }
