@@ -1,677 +1,795 @@
-#[derive(PartialEq)]
-enum AdvanceMode {
-    Pre,
-    Post,
-    NoAdvance,
+use crate::compiler::*;
+
+macro_rules! lit {
+    ($self:ident, $ty:expr, $content:literal) => {{
+        let token = Token::new(
+            $self.index,
+            $self.line,
+            $self.line_offset,
+            $ty,
+            $content.to_owned(),
+        );
+
+        $self.index += $content.len();
+        $self.line_offset += $content.len();
+
+        token
+    }};
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
-pub enum TokenType {
-    Unknown,
-    Eof,
-    Id,
-    Dot,             // .
-    Comma,           // ,
-    Colon,           // :
-    Semicolon,       // ;
-    Question,        // ?
-    Arrow,           // =>
-    ParenL,          // (
-    ParenR,          // )
-    BraceL,          // {
-    BraceR,          // }
-    BracketL,        // [
-    BracketR,        // ]
-    LiteralBool,     // true false
-    LiteralInteger,  // +1
-    LiteralDecimal,  // 1.e-1
-    LiteralString,   // '...'
-    OpAdd,           // +
-    OpSub,           // -
-    OpMul,           // *
-    OpDiv,           // /
-    OpMod,           // %
-    OpPow,           // **
-    OpEq,            // ==
-    OpNeq,           // !=
-    OpLs,            // <
-    OpLsEq,          // <=
-    OpGt,            // >
-    OpGtEq,          // >=
-    OpOr,            // or
-    OpAnd,           // and
-    OpNot,           // not
-    OpBitOr,         // |
-    OpBitAnd,        // &
-    OpBitXor,        // ^
-    OpBitNot,        // ~
-    OpShiftL,        // <<
-    OpShiftR,        // >>
-    OpAssign,        // =
-    OpAssignAdd,     // +=
-    OpAssignSub,     // -=
-    OpAssignMul,     // *=
-    OpAssignDiv,     // /=
-    OpAssignMod,     // %=
-    OpAssignPow,     // **=
-    OpAssignBitOr,   // |=
-    OpAssignBitAnd,  // &=
-    OpAssignBitXor,  // ^=
-    OpAssignBitNot,  // ~=
-    OpAssignShiftL,  // <<=
-    OpAssignShiftR,  // >>=
-    KeywordAs,       // as
-    KeywordLet,      // let
-    KeywordRet,      // ret
-    KeywordBreak,    // break
-    KeywordContinue, // continue
-    KeywordIf,       // if
-    KeywordElse,     // else
-    KeywordFor,      // for
-    KeywordIn,       // in
-    KeywordFrom,     // from
-    KeywordWith,     // with
-    KeywordUse,      // use
-    KeywordPub,      // pub
-    KeywordExtern,   // extern
-    KeywordFn,       // fn
-    KeywordTemplate, // template
-    KeywordVoid,     // void
-    KeywordBool,     // bool
-    KeywordI8,       // i8
-    KeywordI16,      // i16
-    KeywordI32,      // i32
-    KeywordI64,      // i64
-    KeywordI128,     // i128
-    KeywordU8,       // u8
-    KeywordU16,      // u16
-    KeywordU32,      // u32
-    KeywordU64,      // u64
-    KeywordU128,     // u128
-    KeywordF16,      // f16
-    KeywordF32,      // f32
-    KeywordF64,      // f64
-    KeywordStr,      // str
-    Comment,         // // ...
+macro_rules! dy {
+    ($self:ident, $ty:expr, $content:expr) => {{
+        let len = $content.len();
+        let token = Token::new($self.index, $self.line, $self.line_offset, $ty, $content);
+
+        $self.index += len;
+        $self.line_offset += len;
+
+        token
+    }};
 }
 
-#[derive(Debug, Clone)]
-pub struct Token {
-    pub token_type: TokenType,
-    pub token_content: String,
-    pub line_number: usize,
-    pub line_offset: usize,
+macro_rules! token_builder {
+    ($self:ident, $builder:ident, $content:ident) => {
+        let $builder = TokenBuilder::new($self.index, $self.line, $self.line_offset);
+        let mut $content = String::with_capacity(64);
+    };
+}
+
+macro_rules! try_character {
+    ($self:ident, $index:ident, $($char:pat => $body:block)+) => {
+        {
+            let $index = $index + 1;
+
+            match if $index < $self.max_index {
+                $self.characters[$index]
+            } else {
+                '\0'
+            } {
+                $($char => $body)+
+            }
+        }
+    };
+    ($self:ident, $index:ident, $($char:pat => $body:expr),+) => {
+        {
+            let $index = $index + 1;
+
+            match if $index < $self.max_index {
+                $self.characters[$index]
+            } else {
+                '\0'
+            } {
+                $($char => $body),+
+            }
+        }
+    };
 }
 
 pub struct Lexer {
-    content: Vec<char>,
     index: usize,
     max_index: usize,
+    line: usize,
     line_offset: usize,
-    line_number: usize,
+    characters: Vec<char>,
 }
 
 impl Lexer {
-    pub fn new(content: String) -> Lexer {
-        let char_vec: Vec<char> = content.chars().collect();
-        let length = char_vec.len();
+    pub fn new(content: &str) -> Lexer {
+        let characters = content.chars().collect::<Vec<_>>();
 
         Lexer {
-            content: char_vec,
             index: 0,
-            max_index: length,
+            max_index: characters.len(),
+            line: 1,
             line_offset: 1,
-            line_number: 1,
+            characters,
         }
     }
 
-    fn is_eof(&self) -> bool {
-        return self.max_index <= self.index;
+    pub fn remain(&self) -> bool {
+        self.index < self.max_index
     }
 
-    fn ch(&self) -> char {
-        return self.content[self.index];
+    pub fn char(&self) -> char {
+        self.characters[self.index]
     }
 
-    fn is_whitespace(&self) -> bool {
-        return self.ch().is_whitespace();
+    fn advance(&mut self) {
+        self.index += 1;
+        self.line_offset += 1;
     }
 
-    fn is_punctuation(&self) -> bool {
-        return self.ch() != '_' && self.ch().is_ascii_punctuation();
+    fn advance_by(&mut self, len: usize) {
+        self.index += len;
+        self.line_offset += len;
     }
 
-    fn is_newline(&self) -> bool {
-        return self.ch() == '\n';
+    fn advance_line(&mut self) {
+        self.index += 1;
+        self.line += 1;
+        self.line_offset = 1;
     }
 
-    fn pick_blackspace(&mut self) -> char {
-        loop {
-            if self.is_eof() {
-                return '\0';
-            }
-
-            if !self.is_whitespace() {
-                break;
-            }
-
-            self.line_offset += 1;
-
-            if self.is_newline() {
-                self.line_offset = 0;
-                self.line_number += 1;
-            }
-
+    fn advance_possible_newline(&mut self) {
+        if self.char() == '\n' {
             self.index += 1;
+            self.line += 1;
+            self.line_offset = 1;
+            return;
         }
 
-        self.ch()
-    }
-
-    fn next_character(&mut self, advance_mode: AdvanceMode) -> char {
-        if self.is_eof() {
-            return '\0';
-        }
-
-        if advance_mode == AdvanceMode::Pre {
-            if !self.is_eof() {
-                self.line_offset += 1;
-
-                if self.is_newline() {
-                    self.line_offset = 0;
-                    self.line_number += 1;
-                }
-
-                self.index += 1;
-            }
-
-            return if self.is_eof() { '\0' } else { self.ch() };
-        }
-
-        let character = self.ch();
-
-        if advance_mode == AdvanceMode::Post {
-            if !self.is_eof() {
-                self.line_offset += 1;
-
-                if self.is_newline() {
-                    self.line_offset = 0;
-                    self.line_number += 1;
-                }
-
-                self.index += 1;
-            }
-        }
-
-        character
-    }
-
-    fn parse_number(&mut self) -> Option<Token> {
-        let index = self.index;
-        let line_offset = self.line_offset;
-
-        fn read_integer(this: &mut Lexer) -> String {
-            let mut integer = "".to_string();
-
-            while this.next_character(AdvanceMode::NoAdvance).is_digit(10) {
-                integer.push(this.next_character(AdvanceMode::Post));
-            }
-
-            integer
-        };
-        fn read_exp(this: &mut Lexer) -> String {
-            match this.next_character(AdvanceMode::NoAdvance) {
-                'e' | 'E' => (),
-                _ => {
-                    return "".to_string();
-                }
-            }
-
-            let index = this.index;
-            let line_offset = this.line_offset;
-
-            let mut exp = this.next_character(AdvanceMode::Post).to_string();
-
-            match this.next_character(AdvanceMode::NoAdvance) {
-                '+' | '-' => {
-                    exp.push(this.next_character(AdvanceMode::Post));
-                }
-                _ => (),
-            }
-
-            if !this.next_character(AdvanceMode::NoAdvance).is_digit(10) {
-                this.index = index;
-                this.line_offset = line_offset;
-
-                return "".to_string();
-            }
-
-            return exp + &read_integer(this);
-        };
-        fn return_none(this: &mut Lexer, index: usize, line_offset: usize) -> Option<Token> {
-            this.index = index;
-            this.line_offset = line_offset;
-
-            return None;
-        };
-        fn return_integer(this: &Lexer, integer: String, line_offset: usize) -> Option<Token> {
-            Some(Token {
-                token_type: TokenType::LiteralInteger,
-                token_content: integer,
-                line_offset: line_offset,
-                line_number: this.line_number,
-            })
-        };
-        fn return_decimal(this: &Lexer, decimal: String, line_offset: usize) -> Option<Token> {
-            Some(Token {
-                token_type: TokenType::LiteralDecimal,
-                token_content: decimal,
-                line_offset: line_offset,
-                line_number: this.line_number,
-            })
-        };
-
-        let mut sign = "".to_string();
-
-        match self.next_character(AdvanceMode::NoAdvance) {
-            '+' | '-' => {
-                sign.push(self.next_character(AdvanceMode::Post));
-            }
-            _ => (),
-        }
-
-        match self.next_character(AdvanceMode::NoAdvance) {
-            '.' => {
-                self.next_character(AdvanceMode::Pre);
-
-                let integer = read_integer(self);
-
-                if integer.is_empty() {
-                    return_none(self, index, line_offset)
-                } else {
-                    let exp = read_exp(self);
-
-                    return_decimal(self, sign + "." + &integer + &exp, line_offset)
-                }
-            }
-            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                let integer = read_integer(self);
-                let mut decimal = "".to_string();
-
-                if self.next_character(AdvanceMode::NoAdvance) == '.' {
-                    decimal =
-                        self.next_character(AdvanceMode::Post).to_string() + &read_integer(self);
-                }
-
-                decimal += &read_exp(self);
-
-                if decimal.is_empty() {
-                    return_integer(self, sign + &integer, line_offset)
-                } else {
-                    return_decimal(self, sign + &integer + &decimal, line_offset)
-                }
-            }
-            _ => return_none(self, index, line_offset),
-        }
+        self.index += 1;
+        self.line_offset += 1;
     }
 
     pub fn next(&mut self) -> Token {
-        let mut token = Token {
-            token_type: TokenType::Unknown,
-            token_content: "".to_string(),
-            line_number: self.line_number,
-            line_offset: self.line_offset,
-        };
-
-        let return_token = |token_type: TokenType, token_content: String| -> Token {
-            token.token_type = token_type;
-            token.token_content = token_content;
-
-            token
-        };
-
-        let blackspace = self.pick_blackspace();
-
-        if blackspace == '\0' {
-            return return_token(TokenType::Eof, "".to_string());
-        }
-
-        match blackspace {
-            '.' => match self.parse_number() {
-                Some(token) => {
-                    return token;
-                }
-                None => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::Dot, ".".to_string());
-                }
-            },
-            ',' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::Comma, blackspace.to_string());
+        loop {
+            if !self.remain() {
+                return Token::new(
+                    self.index,
+                    self.line,
+                    self.line_offset,
+                    TokenType::Eof,
+                    "".to_owned(),
+                );
             }
-            ':' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::Colon, blackspace.to_string());
-            }
-            ';' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::Semicolon, blackspace.to_string());
-            }
-            '?' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::Question, blackspace.to_string());
-            }
-            '(' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::ParenL, blackspace.to_string());
-            }
-            ')' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::ParenR, blackspace.to_string());
-            }
-            '{' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::BraceL, blackspace.to_string());
-            }
-            '}' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::BraceR, blackspace.to_string());
-            }
-            '[' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::BracketL, blackspace.to_string());
-            }
-            ']' => {
-                self.next_character(AdvanceMode::Pre);
-                return return_token(TokenType::BracketR, blackspace.to_string());
-            }
-            '+' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignAdd, "+=".to_string());
-                }
-                _ => {
-                    self.index -= 1;
-                    self.line_offset -= 1;
 
-                    return match self.parse_number() {
-                        Some(token) => {
-                            return token;
-                        }
-                        None => {
-                            self.next_character(AdvanceMode::Pre);
-                            return_token(TokenType::OpAdd, "+".to_string())
-                        }
-                    };
-                }
-            },
-            '-' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignSub, "-=".to_string());
-                }
-                _ => {
-                    self.index -= 1;
-                    self.line_offset -= 1;
+            let char = self.char();
 
-                    return match self.parse_number() {
-                        Some(token) => {
-                            return token;
-                        }
-                        None => {
-                            self.next_character(AdvanceMode::Pre);
-                            return_token(TokenType::OpSub, "-".to_string())
-                        }
-                    };
-                }
-            },
-            '*' => match self.next_character(AdvanceMode::Pre) {
-                '*' => match self.next_character(AdvanceMode::Pre) {
-                    '=' => {
-                        self.next_character(AdvanceMode::Pre);
-                        return return_token(TokenType::OpAssignPow, "**=".to_string());
-                    }
-                    _ => {
-                        return return_token(TokenType::OpPow, "**".to_string());
-                    }
-                },
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignMul, "*=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpMul, "*".to_string());
-                }
-            },
-            '/' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignDiv, "/=".to_string());
-                }
-                '/' => {
-                    self.next_character(AdvanceMode::Pre);
-                    let mut string = "//".to_owned();
-
-                    while !self.is_eof() && !self.is_newline() {
-                        string.push(self.next_character(AdvanceMode::Post));
-                    }
-
-                    return return_token(TokenType::Comment, string);
-                }
-                _ => {
-                    return return_token(TokenType::OpDiv, "/".to_string());
-                }
-            },
-            '%' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignMod, "%=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpMod, "%".to_string());
-                }
-            },
-            '=' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpEq, "==".to_string());
-                }
-                '>' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::Arrow, "=>".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpAssign, "=".to_string());
-                }
-            },
-            '!' => {
-                if self.next_character(AdvanceMode::Pre) == '=' {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpNeq, "!=".to_string());
-                } else {
-                    self.index -= 1;
-                    self.line_offset -= 1;
-                }
+            if char.is_whitespace() {
+                self.advance_possible_newline();
+                continue;
             }
-            '<' => match self.next_character(AdvanceMode::Pre) {
-                '<' => match self.next_character(AdvanceMode::Pre) {
-                    '=' => {
-                        self.next_character(AdvanceMode::Pre);
-                        return return_token(TokenType::OpAssignShiftL, "<<=".to_string());
-                    }
-                    _ => {
-                        return return_token(TokenType::OpShiftL, "<<".to_string());
-                    }
-                },
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpLsEq, "<=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpLs, "<".to_string());
-                }
-            },
-            '>' => match self.next_character(AdvanceMode::Pre) {
-                '>' => match self.next_character(AdvanceMode::Pre) {
-                    '=' => {
-                        self.next_character(AdvanceMode::Pre);
-                        return return_token(TokenType::OpAssignShiftR, ">>=".to_string());
-                    }
-                    _ => {
-                        return return_token(TokenType::OpShiftR, ">>".to_string());
-                    }
-                },
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpGtEq, ">=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpGt, ">".to_string());
-                }
-            },
-            '|' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignBitOr, "|=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpBitOr, "|".to_string());
-                }
-            },
-            '&' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignBitAnd, "&=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpBitAnd, "&".to_string());
-                }
-            },
-            '^' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignBitXor, "^=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpBitXor, "^".to_string());
-                }
-            },
-            '~' => match self.next_character(AdvanceMode::Pre) {
-                '=' => {
-                    self.next_character(AdvanceMode::Pre);
-                    return return_token(TokenType::OpAssignBitNot, "~=".to_string());
-                }
-                _ => {
-                    return return_token(TokenType::OpBitNot, "~".to_string());
-                }
-            },
-            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                match self.parse_number() {
-                    Some(token) => {
-                        return token;
-                    }
-                    None => (),
-                }
-            }
-            '\'' => {
-                self.next_character(AdvanceMode::Pre);
 
-                let mut string = String::new();
+            let index = self.index;
 
-                while !self.is_eof() {
-                    match self.ch() {
-                        '\\' => {
-                            self.next_character(AdvanceMode::Pre);
+            match char {
+                '#' => {
+                    token_builder!(self, builder, content);
 
-                            if self.is_eof() {
-                                panic!("unexpected eof reached.");
-                            }
+                    while self.remain() {
+                        let char = self.char();
+                        self.advance_possible_newline();
 
-                            match self.ch() {
-                                'n' => string.push('\n'),
-                                'r' => string.push('\r'),
-                                't' => string.push('\t'),
-                                '\\' => string.push('\\'),
-                                '0' => string.push('\0'),
-                                '\'' => string.push('\''),
-                                '"' => string.push('"'),
-                                '`' => string.push('`'),
-                                _ => string.push(self.ch()),
-                            }
-
-                            self.next_character(AdvanceMode::Pre);
-                        }
-                        '\'' => {
+                        if char == '\n' {
                             break;
                         }
-                        _ => string.push(self.next_character(AdvanceMode::Post)),
+
+                        content.push(char);
+                    }
+
+                    return builder.build(TokenType::Comment, content);
+                }
+                '(' => return lit! { self, TokenType::PuncParenL, "(" },
+                ')' => return lit! { self, TokenType::PuncParenR, ")" },
+                '{' => return lit! { self, TokenType::PuncBraceL, "{" },
+                '}' => return lit! { self, TokenType::PuncBraceR, "}" },
+                '[' => return lit! { self, TokenType::PuncBracketL, "[" },
+                ']' => return lit! { self, TokenType::PuncBracketR, "]" },
+                '.' => return lit! { self, TokenType::PuncDot, "." },
+                ',' => return lit! { self, TokenType::PuncComma, "," },
+                ';' => return lit! { self, TokenType::PuncSemicolon, ";" },
+                '=' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpCmpEq, "==" },
+                    _ => return lit! { self, TokenType::OpAssign, "=" }
+                },
+                '!' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpCmpNeq, "!=" },
+                    _ => return lit! { self, TokenType::Error(TokenError::Unknown), "!" }
+                },
+                '+' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignAdd, "+=" },
+                    _ => return lit! { self, TokenType::OpAdd, "+" }
+                },
+                '-' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignSub, "-=" },
+                    _ => return lit! { self, TokenType::OpSub, "-" }
+                },
+                '*' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignMul, "*=" },
+                    _ => return lit! { self, TokenType::OpMul, "*" }
+                },
+                '/' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignDiv, "/=" },
+                    _ => return lit! { self, TokenType::OpDiv, "/" }
+                },
+                '%' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignMod, "%=" },
+                    _ => return lit! { self, TokenType::OpMod, "%" }
+                },
+                '<' => try_character! {
+                    self,
+                    index,
+                    '<' => try_character! {
+                        self,
+                        index,
+                        '=' => return lit! { self, TokenType::OpAssignBitShiftL, "<<=" },
+                        _ => return lit! { self, TokenType::OpBitShiftL, "<<" }
+                    },
+                    '=' => return lit! { self, TokenType::OpCmpLsEq, "<=" },
+                    _ => return lit! { self, TokenType::OpCmpLs, "<" }
+                },
+                '>' => try_character! {
+                    self,
+                    index,
+                    '>' => try_character! {
+                        self,
+                        index,
+                        '=' => return lit! { self, TokenType::OpAssignBitShiftR, ">=" },
+                        _ => return lit! { self, TokenType::OpBitShiftR, ">" }
+                    },
+                    '=' => return lit! { self, TokenType::OpCmpGtEq, ">=" },
+                    _ => return lit! { self, TokenType::OpCmpGt, ">" }
+                },
+                '|' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignBitOr, "|=" },
+                    _ => return lit! { self, TokenType::OpBitOr, "|" }
+                },
+                '&' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignBitAnd, "&=" },
+                    _ => return lit! { self, TokenType::OpBitAnd, "&" }
+                },
+                '^' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignBitXor, "^=" },
+                    _ => return lit! { self, TokenType::OpBitXor, "^" }
+                },
+                '~' => try_character! {
+                    self,
+                    index,
+                    '=' => return lit! { self, TokenType::OpAssignBitNot, "~=" },
+                    _ => return lit! { self, TokenType::OpBitNot, "~" }
+                },
+                '0' => try_character! {
+                    self,
+                    index,
+                    'b' => {
+                        unimplemented!()
+                    }
+                    'B' => {
+                        unimplemented!()
+                    }
+                    'x' => {
+                        unimplemented!()
+                    }
+                    'X' => {
+                        unimplemented!()
+                    }
+                    _ => {
+                        let content = self.next_integer(10);
+                        return dy!(self, TokenType::LiteralInteger(content.clone()), content)
+                    }
+                },
+                '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                    let decimal = self.next_integer(10);
+
+                    token_builder!(self, builder, content);
+                    content.push_str(&decimal);
+
+                    try_character! {
+                        self,
+                        index,
+                        '.' => {
+                            content.push('.');
+                            self.advance();
+
+                            let frac = self.next_integer(10);
+
+                            if frac.is_empty() {
+                                return builder.build(TokenType::Error(TokenError::F64LiteralTerminatedWithDot), content);
+                            }
+
+                            content.push_str(&frac);
+
+                            return dy!(self, TokenType::LiteralF64(content.clone()), content);
+                        }
+                        _ => {
+                            return dy!(self, TokenType::LiteralInteger(content.clone()), content);
+                        }
                     }
                 }
+                '\'' => {
+                    token_builder!(self, builder, content);
+                    content.push('\'');
+                    self.advance();
 
-                if self.ch() != '\'' {
-                    panic!("expected ' not detected");
+                    let mut error = None;
+                    let mut literal = Vec::with_capacity(2);
+
+                    loop {
+                        if !self.remain() {
+                            error = Some(TokenError::CharLiteralNotTerminated);
+                            break;
+                        }
+
+                        let mut char = self.char();
+
+                        match char {
+                            '\\' => {
+                                content.push(char);
+                                self.advance();
+
+                                if !self.remain() {
+                                    error = Some(TokenError::CharLiteralNotTerminated);
+                                    break;
+                                }
+
+                                char = self.char();
+
+                                if char == '\n' {
+                                    error = Some(TokenError::CharLiteralNotTerminated);
+                                    break;
+                                }
+
+                                content.push(char);
+                                literal.push(match char {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    '\\' => '\\',
+                                    '0' => '\0',
+                                    '\'' => '\'',
+                                    '"' => '"',
+                                    _ => char,
+                                });
+                                self.advance();
+                            }
+                            '\'' => {
+                                content.push(char);
+                                self.advance();
+                                break;
+                            }
+                            '\n' => {
+                                error = Some(TokenError::CharLiteralNotTerminated);
+                                break;
+                            }
+                            _ => {
+                                content.push(char);
+                                literal.push(char);
+                                self.advance();
+                            }
+                        }
+                    }
+
+                    if let Some(error) = error {
+                        return builder.build(TokenType::Error(error), content);
+                    }
+
+                    match literal.len() {
+                        0 => {
+                            return builder
+                                .build(TokenType::Error(TokenError::CharLiteralEmpty), content)
+                        }
+                        1 => return builder.build(TokenType::LiteralChar(literal[0]), content),
+                        _ => {
+                            return builder
+                                .build(TokenType::Error(TokenError::CharLiteralTooLong), content)
+                        }
+                    }
+                }
+                '"' => {
+                    token_builder!(self, builder, content);
+                    content.push('"');
+                    self.advance();
+
+                    let mut error = None;
+                    let mut literal = Vec::with_capacity(2);
+
+                    loop {
+                        if !self.remain() {
+                            error = Some(TokenError::StrLiteralNotTerminated);
+                            break;
+                        }
+
+                        let mut char = self.char();
+
+                        match char {
+                            '\\' => {
+                                content.push(char);
+                                self.advance();
+
+                                if !self.remain() {
+                                    error = Some(TokenError::StrLiteralNotTerminated);
+                                    break;
+                                }
+
+                                char = self.char();
+
+                                if char == '\n' {
+                                    error = Some(TokenError::StrLiteralNotTerminated);
+                                    break;
+                                }
+
+                                content.push(char);
+                                literal.push(match char {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    '\\' => '\\',
+                                    '0' => '\0',
+                                    '\'' => '\'',
+                                    '"' => '"',
+                                    _ => char,
+                                });
+                                self.advance();
+                            }
+                            '"' => {
+                                content.push(char);
+                                self.advance();
+                                break;
+                            }
+                            '\n' => {
+                                error = Some(TokenError::StrLiteralNotTerminated);
+                                break;
+                            }
+                            _ => {
+                                content.push(char);
+                                literal.push(char);
+                                self.advance();
+                            }
+                        }
+                    }
+
+                    if let Some(error) = error {
+                        return builder.build(TokenType::Error(error), content);
+                    }
+
+                    return builder.build(
+                        TokenType::LiteralStr(literal.into_iter().collect::<String>()),
+                        content,
+                    );
+                }
+                '@' => try_character! {
+                    self,
+                    index,
+                    '"' => {
+                        token_builder!(self, builder, content);
+                        content.push('@');
+                        content.push('"');
+                        self.advance_by(2);
+
+                        let mut error = None;
+                        let mut literal = Vec::with_capacity(2);
+
+                        loop {
+                            if !self.remain() {
+                                error = Some(TokenError::StrLiteralNotTerminated);
+                                break;
+                            }
+
+                            let mut char = self.char();
+
+                            match char {
+                                '\\' => {
+                                    content.push(char);
+                                    self.advance();
+
+                                    if !self.remain() {
+                                        error = Some(TokenError::StrLiteralNotTerminated);
+                                        break;
+                                    }
+
+                                    char = self.char();
+                                    content.push(char);
+                                    literal.push(match char {
+                                        'n' => '\n',
+                                        'r' => '\r',
+                                        't' => '\t',
+                                        '\\' => '\\',
+                                        '0' => '\0',
+                                        '\'' => '\'',
+                                        '"' => '"',
+                                        _ => char,
+                                    });
+
+                                    if char == '\n' {
+                                        self.advance_line();
+                                    } else {
+                                        self.advance();
+                                    }
+                                }
+                                '"' => {
+                                    content.push(char);
+                                    self.advance();
+
+                                    if !self.remain() {
+                                        error = Some(TokenError::StrLiteralNotTerminated);
+                                        break;
+                                    }
+
+                                    char = self.char();
+                                    content.push(char);
+
+                                    if char == '@' {
+                                        self.advance();
+                                        break;
+                                    }
+
+                                    literal.push('"');
+                                }
+                                '\n' => {
+                                    content.push(char);
+                                    literal.push(char);
+                                    self.advance_line();
+                                }
+                                _ => {
+                                    content.push(char);
+                                    literal.push(char);
+                                    self.advance();
+                                }
+                            }
+                        }
+
+                        if let Some(error) = error {
+                            return builder.build(TokenType::Error(error), content);
+                        }
+
+                        return builder.build(
+                            TokenType::LiteralStr(literal.into_iter().collect::<String>()),
+                            content,
+                        );
+                    }
+                    _ => { return lit! { self, TokenType::Error(TokenError::Unknown), "@" }; }
+                },
+                _ => {}
+            }
+
+            token_builder!(self, builder, content);
+
+            while self.remain() {
+                let char = self.char();
+
+                if char.is_whitespace() || char.is_ascii_punctuation() && char != '_' {
+                    break;
                 }
 
-                self.next_character(AdvanceMode::Pre);
-
-                return return_token(TokenType::LiteralString, string);
+                content.push(char);
+                self.advance();
             }
-            _ => (),
+
+            match content.as_str() {
+                "" => {
+                    return dy! {
+                        self,
+                        TokenType::Error(TokenError::Unknown),
+                        char.to_string()
+                    }
+                }
+                "or" => return builder.build(TokenType::OpLogOr, content),
+                "and" => return builder.build(TokenType::OpLogAnd, content),
+                "not" => return builder.build(TokenType::OpLogNot, content),
+                "bool" => return builder.build(TokenType::KeywordBool, content),
+                "byte" => return builder.build(TokenType::KeywordByte, content),
+                "char" => return builder.build(TokenType::KeywordChar, content),
+                "i64" => return builder.build(TokenType::KeywordI64, content),
+                "u64" => return builder.build(TokenType::KeywordU64, content),
+                "isize" => return builder.build(TokenType::KeywordIsize, content),
+                "usize" => return builder.build(TokenType::KeywordUsize, content),
+                "f32" => return builder.build(TokenType::KeywordF32, content),
+                "f64" => return builder.build(TokenType::KeywordF64, content),
+                "cptr" => return builder.build(TokenType::KeywordCptr, content),
+                "mptr" => return builder.build(TokenType::KeywordMptr, content),
+                "use" => return builder.build(TokenType::KeywordUse, content),
+                "let" => return builder.build(TokenType::KeywordLet, content),
+                "fn" => return builder.build(TokenType::KeywordFn, content),
+                "if" => return builder.build(TokenType::KeywordIf, content),
+                "else" => return builder.build(TokenType::KeywordElse, content),
+                "for" => return builder.build(TokenType::KeywordFor, content),
+                "in" => return builder.build(TokenType::KeywordIn, content),
+                "as" => return builder.build(TokenType::KeywordAs, content),
+                "true" => return builder.build(TokenType::LiteralBool(true), content),
+                "false" => return builder.build(TokenType::LiteralBool(false), content),
+                _ => return builder.build(TokenType::Id, content),
+            }
+        }
+    }
+
+    fn next_integer(&mut self, radix: u32) -> String {
+        let mut integer = String::with_capacity(8);
+
+        while self.remain() {
+            let char = self.char();
+
+            if !char.is_digit(radix) {
+                break;
+            }
+
+            integer.push(char);
+            self.index += 1;
         }
 
-        if self.is_punctuation() {
-            return return_token(
-                TokenType::Unknown,
-                self.next_character(AdvanceMode::Post).to_string(),
-            );
+        self.line_offset += integer.len();
+        integer
+    }
+
+    fn next_exp(&mut self, radix: u32) -> String {
+        if self.remain() {
+            return "".to_owned();
         }
 
-        let mut content = String::new();
+        let mut char = self.char();
 
-        while !self.is_eof() && !self.is_whitespace() && !self.is_punctuation() {
-            content.push(self.next_character(AdvanceMode::Post));
+        if char != 'e' && char != 'E' {
+            return "".to_owned();
         }
 
-        match content.as_ref() {
-            "true" => return_token(TokenType::LiteralBool, content),
-            "false" => return_token(TokenType::LiteralBool, content),
-            "or" => return_token(TokenType::OpOr, content),
-            "and" => return_token(TokenType::OpAnd, content),
-            "not" => return_token(TokenType::OpNot, content),
-            "as" => return_token(TokenType::KeywordAs, content),
-            "let" => return_token(TokenType::KeywordLet, content),
-            "ret" => return_token(TokenType::KeywordRet, content),
-            "break" => return_token(TokenType::KeywordBreak, content),
-            "continue" => return_token(TokenType::KeywordContinue, content),
-            "if" => return_token(TokenType::KeywordIf, content),
-            "else" => return_token(TokenType::KeywordElse, content),
-            "for" => return_token(TokenType::KeywordFor, content),
-            "in" => return_token(TokenType::KeywordIn, content),
-            "from" => return_token(TokenType::KeywordFrom, content),
-            "with" => return_token(TokenType::KeywordWith, content),
-            "use" => return_token(TokenType::KeywordUse, content),
-            "pub" => return_token(TokenType::KeywordPub, content),
-            "extern" => return_token(TokenType::KeywordExtern, content),
-            "fn" => return_token(TokenType::KeywordFn, content),
-            "template" => return_token(TokenType::KeywordTemplate, content),
-            "void" => return_token(TokenType::KeywordVoid, content),
-            "bool" => return_token(TokenType::KeywordBool, content),
-            "i8" => return_token(TokenType::KeywordI8, content),
-            "i16" => return_token(TokenType::KeywordI16, content),
-            "i32" => return_token(TokenType::KeywordI32, content),
-            "i64" => return_token(TokenType::KeywordI64, content),
-            "i128" => return_token(TokenType::KeywordI128, content),
-            "u8" => return_token(TokenType::KeywordU8, content),
-            "u16" => return_token(TokenType::KeywordU16, content),
-            "u32" => return_token(TokenType::KeywordU32, content),
-            "u64" => return_token(TokenType::KeywordU64, content),
-            "u128" => return_token(TokenType::KeywordU128, content),
-            "f16" => return_token(TokenType::KeywordF16, content),
-            "f32" => return_token(TokenType::KeywordF32, content),
-            "f64" => return_token(TokenType::KeywordF64, content),
-            "str" => return_token(TokenType::KeywordStr, content),
-            _ => return_token(TokenType::Id, content),
+        let mut exp = String::with_capacity(8);
+        exp.push(char);
+
+        let mut index = self.index + 1;
+        if self.max_index <= index {
+            return "".to_owned();
         }
+
+        char = self.characters[index];
+
+        if char == '+' || char == '-' {
+            exp.push(char);
+            index += 1;
+
+            if self.max_index <= index {
+                return "".to_owned();
+            }
+
+            char = self.characters[index];
+        }
+
+        if !char.is_digit(10) {
+            return "".to_owned();
+        }
+
+        exp.push(char);
+        self.index += exp.len();
+        self.line_offset += exp.len();
+
+        exp.push_str(&self.next_integer(10));
+        exp
+    }
+
+    // fn next_literal_suffix(&mut self) -> String {
+    //     if !self.remain() {
+    //         return "".to_owned();
+    //     }
+
+    //     match unsafe { self.current() } {
+    //         'b' => try_character!(self, {
+    //             'y' => { try_character!(self, {
+    //                 't' => { try_character!(self, {
+    //                     'e' => { return string!(self, "byte"); }
+    //                 }) }
+    //                 _ => { return "".to_owned(); }
+    //             }) }
+    //             _ => { return "".to_owned() }
+    //         }),
+    //         _ => return "".to_owned(),
+    //     }
+    // }
+}
+
+mod utils {
+    use super::*;
+
+    pub fn collect_all_tokens(input: &str) -> Vec<Token> {
+        let mut lexer = Lexer::new(input);
+        let mut tokens = Vec::new();
+
+        loop {
+            let token = lexer.next();
+
+            match token.ty() {
+                TokenType::Eof => {
+                    break;
+                }
+                _ => tokens.push(token),
+            }
+        }
+
+        tokens
+    }
+
+    pub fn extract_token_ty(tokens: &Vec<Token>) -> Vec<TokenType> {
+        let mut token_ty = Vec::new();
+
+        for token in tokens {
+            token_ty.push(token.ty().clone());
+        }
+
+        token_ty
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_comments() {
+        let input = "# comment";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(token_ty, [TokenType::Comment,]);
+
+        let input = "#\n##\n###\n####\n#####\n######\n#######\n########\n#########\n##########";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+                TokenType::Comment,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_punctuations() {
+        let input = "(){}[].,;";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::PuncParenL,
+                TokenType::PuncParenR,
+                TokenType::PuncBraceL,
+                TokenType::PuncBraceR,
+                TokenType::PuncBracketL,
+                TokenType::PuncBracketR,
+                TokenType::PuncDot,
+                TokenType::PuncComma,
+                TokenType::PuncSemicolon,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_statements() {
+        let input = "let x = if true { 1 } else { 0 }";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::KeywordLet,
+                TokenType::Id,
+                TokenType::OpAssign,
+                TokenType::KeywordIf,
+                TokenType::LiteralBool(true),
+                TokenType::PuncBraceL,
+                TokenType::LiteralInteger("1".to_owned()),
+                TokenType::PuncBraceR,
+                TokenType::KeywordElse,
+                TokenType::PuncBraceL,
+                TokenType::LiteralInteger("0".to_owned()),
+                TokenType::PuncBraceR,
+            ]
+        );
     }
 }

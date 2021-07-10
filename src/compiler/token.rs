@@ -111,16 +111,14 @@ pub enum TokenType {
     KeywordIn,         // in
     KeywordAs,         // as
     LiteralBool(bool),
-    LiteralByte,
+    LiteralByte(String),
     LiteralChar(char),
-    LiteralI64,
-    LiteralU64,
-    LiteralIsize,
-    LiteralUsize,
-    LiteralF32,
-    LiteralF64,
-    LiteralInteger,
-    LiteralDecimal,
+    LiteralI64(String),
+    LiteralU64(String),
+    LiteralIsize(String),
+    LiteralUsize(String),
+    LiteralF64(String),
+    LiteralInteger(String),
     LiteralStr(String),
     Id,
 }
@@ -132,4 +130,5 @@ pub enum TokenError {
     CharLiteralEmpty,
     CharLiteralTooLong,
     StrLiteralNotTerminated,
+    F64LiteralTerminatedWithDot,
 }

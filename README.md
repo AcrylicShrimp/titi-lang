@@ -62,6 +62,24 @@ There is a line comment only.
 
 ### Literals
 
+#### Bool literals
+
+- `true`
+- `false`
+
+#### Byte literals
+
+Any number between [0, 255]
+
+#### Char literals
+
+A single character enclosed with '. It supports escape sequences.
+
+| Escape | Desc             |
+| ------- | ---------------- |
+| `\n`    | Constant pointer |
+| mptr    | Mutable pointer  |
+
 ### Variables
 
 ### Functions
