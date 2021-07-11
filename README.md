@@ -19,7 +19,6 @@ fn main() {
 | u64     | 64 bits                          | Unsigned integer       |
 | isize   | 32/64(follows pointer size) bits | Signed integer         |
 | usize   | 32/64(follows pointer size) bits | Unsigned integer       |
-| f32     | 32 bits                          | IEEE754 floating point |
 | f64     | 64 bits                          | IEEE754 floating point |
 
 ## Pointers and References
@@ -76,9 +75,9 @@ Any number between [0, 255]
 A single character enclosed with '. It supports escape sequences.
 
 | Escape | Desc             |
-| ------- | ---------------- |
-| `\n`    | Constant pointer |
-| mptr    | Mutable pointer  |
+| ------ | ---------------- |
+| `\n`   | Constant pointer |
+| mptr   | Mutable pointer  |
 
 ### Variables
 
