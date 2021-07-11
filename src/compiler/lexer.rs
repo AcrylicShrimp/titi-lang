@@ -1362,4 +1362,94 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_literals_signed_f64_signed_exp() {
+        let input = "+0e+0 -1e-1 +2e+2 -3e-3 +4e+4 -5e-5 +00E+00 -11E-11 +22E+22 -33E-33 +44E+44 -55E-55 +000e+000 -111e-111 +222e+222 -333e-333 +444e+444 -555e-555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("+0e+0".to_owned()),
+                TokenType::LiteralF64("-1e-1".to_owned()),
+                TokenType::LiteralF64("+2e+2".to_owned()),
+                TokenType::LiteralF64("-3e-3".to_owned()),
+                TokenType::LiteralF64("+4e+4".to_owned()),
+                TokenType::LiteralF64("-5e-5".to_owned()),
+                TokenType::LiteralF64("+00E+00".to_owned()),
+                TokenType::LiteralF64("-11E-11".to_owned()),
+                TokenType::LiteralF64("+22E+22".to_owned()),
+                TokenType::LiteralF64("-33E-33".to_owned()),
+                TokenType::LiteralF64("+44E+44".to_owned()),
+                TokenType::LiteralF64("-55E-55".to_owned()),
+                TokenType::LiteralF64("+000e+000".to_owned()),
+                TokenType::LiteralF64("-111e-111".to_owned()),
+                TokenType::LiteralF64("+222e+222".to_owned()),
+                TokenType::LiteralF64("-333e-333".to_owned()),
+                TokenType::LiteralF64("+444e+444".to_owned()),
+                TokenType::LiteralF64("-555e-555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_f64_frac_exp() {
+        let input = "0.0e0 1.1e1 2.2e2 3.3e3 4.4e4 5.5e5 00.00E00 11.11E11 22.22E22 33.33E33 44.44E44 55.55E55 000.000e000 111.111e111 222.222e222 333.333e333 444.444e444 555.555e555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("0.0e0".to_owned()),
+                TokenType::LiteralF64("1.1e1".to_owned()),
+                TokenType::LiteralF64("2.2e2".to_owned()),
+                TokenType::LiteralF64("3.3e3".to_owned()),
+                TokenType::LiteralF64("4.4e4".to_owned()),
+                TokenType::LiteralF64("5.5e5".to_owned()),
+                TokenType::LiteralF64("00.00E00".to_owned()),
+                TokenType::LiteralF64("11.11E11".to_owned()),
+                TokenType::LiteralF64("22.22E22".to_owned()),
+                TokenType::LiteralF64("33.33E33".to_owned()),
+                TokenType::LiteralF64("44.44E44".to_owned()),
+                TokenType::LiteralF64("55.55E55".to_owned()),
+                TokenType::LiteralF64("000.000e000".to_owned()),
+                TokenType::LiteralF64("111.111e111".to_owned()),
+                TokenType::LiteralF64("222.222e222".to_owned()),
+                TokenType::LiteralF64("333.333e333".to_owned()),
+                TokenType::LiteralF64("444.444e444".to_owned()),
+                TokenType::LiteralF64("555.555e555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_signed_f64_frac_exp() {
+        let input = "+0.0e0 -1.1e1 +2.2e2 -3.3e3 +4.4e4 -5.5e5 +00.00E00 -11.11E11 +22.22E22 -33.33E33 +44.44E44 -55.55E55 +000.000e000 -111.111e111 +222.222e222 -333.333e333 +444.444e444 -555.555e555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("+0.0e0".to_owned()),
+                TokenType::LiteralF64("-1.1e1".to_owned()),
+                TokenType::LiteralF64("+2.2e2".to_owned()),
+                TokenType::LiteralF64("-3.3e3".to_owned()),
+                TokenType::LiteralF64("+4.4e4".to_owned()),
+                TokenType::LiteralF64("-5.5e5".to_owned()),
+                TokenType::LiteralF64("+00.00E00".to_owned()),
+                TokenType::LiteralF64("-11.11E11".to_owned()),
+                TokenType::LiteralF64("+22.22E22".to_owned()),
+                TokenType::LiteralF64("-33.33E33".to_owned()),
+                TokenType::LiteralF64("+44.44E44".to_owned()),
+                TokenType::LiteralF64("-55.55E55".to_owned()),
+                TokenType::LiteralF64("+000.000e000".to_owned()),
+                TokenType::LiteralF64("-111.111e111".to_owned()),
+                TokenType::LiteralF64("+222.222e222".to_owned()),
+                TokenType::LiteralF64("-333.333e333".to_owned()),
+                TokenType::LiteralF64("+444.444e444".to_owned()),
+                TokenType::LiteralF64("-555.555e555".to_owned()),
+            ]
+        );
+    }
 }
