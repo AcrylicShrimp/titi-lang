@@ -185,12 +185,32 @@ impl Lexer {
                     self,
                     index,
                     '=' => return lit! { self, TokenType::OpAssignAdd, "+=" },
+                    '0' => return self.next_number(),
+                    '1' => return self.next_number(),
+                    '2' => return self.next_number(),
+                    '3' => return self.next_number(),
+                    '4' => return self.next_number(),
+                    '5' => return self.next_number(),
+                    '6' => return self.next_number(),
+                    '7' => return self.next_number(),
+                    '8' => return self.next_number(),
+                    '9' => return self.next_number(),
                     _ => return lit! { self, TokenType::OpAdd, "+" }
                 },
                 '-' => try_character! {
                     self,
                     index,
                     '=' => return lit! { self, TokenType::OpAssignSub, "-=" },
+                    '0' => return self.next_number(),
+                    '1' => return self.next_number(),
+                    '2' => return self.next_number(),
+                    '3' => return self.next_number(),
+                    '4' => return self.next_number(),
+                    '5' => return self.next_number(),
+                    '6' => return self.next_number(),
+                    '7' => return self.next_number(),
+                    '8' => return self.next_number(),
+                    '9' => return self.next_number(),
                     _ => return lit! { self, TokenType::OpSub, "-" }
                 },
                 '*' => try_character! {
@@ -275,37 +295,11 @@ impl Lexer {
                         unimplemented!()
                     }
                     _ => {
-                        let content = self.next_integer(10);
-                        return dy!(self, TokenType::LiteralInteger(content.clone()), content)
+                        return self.next_number();
                     }
                 },
                 '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                    let decimal = self.next_integer(10);
-
-                    token_builder!(self, builder, content);
-                    content.push_str(&decimal);
-
-                    try_character! {
-                        self,
-                        index,
-                        '.' => {
-                            content.push('.');
-                            self.advance();
-
-                            let frac = self.next_integer(10);
-
-                            if frac.is_empty() {
-                                return builder.build(TokenType::Error(TokenError::F64LiteralTerminatedWithDot), content);
-                            }
-
-                            content.push_str(&frac);
-
-                            return dy!(self, TokenType::LiteralF64(content.clone()), content);
-                        }
-                        _ => {
-                            return dy!(self, TokenType::LiteralInteger(content.clone()), content);
-                        }
-                    }
+                    return self.next_number();
                 }
                 '\'' => {
                     token_builder!(self, builder, content);
@@ -603,30 +597,178 @@ impl Lexer {
         }
     }
 
-    fn next_integer(&mut self, radix: u32) -> String {
+    fn next_number(&mut self) -> Token {
+        token_builder!(self, builder, content);
+
+        let char = self.char();
+
+        if char == '+' || char == '-' {
+            content.push(char);
+            self.advance();
+        }
+
+        let decimal = self.next_integer(self.index, 10);
+        content.push_str(&decimal);
+        self.advance_by(decimal.len());
+
+        if !self.remain() {
+            return builder.build(TokenType::LiteralInteger(content.clone()), content);
+        }
+
+        match self.char() {
+            '.' => {
+                let frac = self.next_frac(self.index);
+
+                if frac.is_empty() {
+                    return builder.build(TokenType::LiteralInteger(content.clone()), content);
+                }
+
+                content.push_str(&frac);
+                self.advance_by(frac.len());
+
+                let exp = self.next_exp(self.index);
+                content.push_str(&exp);
+                self.advance_by(exp.len());
+
+                let suffix = self.next_literal_suffix(self.index);
+
+                if suffix.is_empty() {
+                    return builder.build(TokenType::LiteralF64(content.clone()), content);
+                }
+
+                content.push_str(&suffix);
+                self.advance_by(suffix.len());
+
+                return builder.build(
+                    match suffix.as_str() {
+                        "byte" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                        "char" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixChar),
+                        "i64" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixI64),
+                        "u64" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixU64),
+                        "isize" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixISize),
+                        "usize" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixUSize),
+                        "f64" => TokenType::LiteralF64(content.clone()),
+                        _ => unreachable!(),
+                    },
+                    content,
+                );
+            }
+            'e' | 'E' => {
+                let exp = self.next_exp(self.index);
+
+                if exp.is_empty() {
+                    // We can skip the suffix parsing, because there's no suffix that starts with a 'e'.
+                    return builder.build(TokenType::LiteralInteger(content.clone()), content);
+                }
+
+                content.push_str(&exp);
+                self.advance_by(exp.len());
+
+                let suffix = self.next_literal_suffix(self.index);
+
+                if suffix.is_empty() {
+                    return builder.build(TokenType::LiteralF64(content.clone()), content);
+                }
+
+                content.push_str(&suffix);
+                self.advance_by(suffix.len());
+
+                return builder.build(
+                    match suffix.as_str() {
+                        "byte" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                        "char" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixChar),
+                        "i64" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixI64),
+                        "u64" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixU64),
+                        "isize" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixISize),
+                        "usize" => TokenType::Error(TokenError::F64LiteralFollowedBySuffixUSize),
+                        "f64" => TokenType::LiteralF64(content.clone()),
+                        _ => unreachable!(),
+                    },
+                    content,
+                );
+            }
+            _ => {
+                let suffix = self.next_literal_suffix(self.index);
+
+                if suffix.is_empty() {
+                    return builder.build(TokenType::LiteralInteger(content.clone()), content);
+                }
+
+                content.push_str(&suffix);
+                self.advance_by(suffix.len());
+
+                return builder.build(
+                    match suffix.as_str() {
+                        "byte" => TokenType::LiteralByte(content.clone()),
+                        "char" => TokenType::LiteralCharInteger(content.clone()),
+                        "i64" => TokenType::LiteralI64(content.clone()),
+                        "u64" => TokenType::LiteralU64(content.clone()),
+                        "isize" => TokenType::LiteralIsize(content.clone()),
+                        "usize" => TokenType::LiteralUsize(content.clone()),
+                        "f64" => TokenType::LiteralF64(content.clone()),
+                        _ => unreachable!(),
+                    },
+                    content,
+                );
+            }
+        }
+    }
+
+    fn next_integer(&mut self, mut index: usize, radix: u32) -> String {
         let mut integer = String::with_capacity(8);
 
-        while self.remain() {
-            let char = self.char();
+        while index < self.max_index {
+            let char = self.characters[index];
 
             if !char.is_digit(radix) {
                 break;
             }
 
             integer.push(char);
-            self.index += 1;
+            index += 1;
         }
 
-        self.line_offset += integer.len();
         integer
     }
 
-    fn next_exp(&mut self, radix: u32) -> String {
-        if self.remain() {
+    fn next_frac(&mut self, mut index: usize) -> String {
+        if !self.remain() {
             return "".to_owned();
         }
 
-        let mut char = self.char();
+        let mut char = self.characters[index];
+
+        if char != '.' {
+            return "".to_owned();
+        }
+
+        let mut frac = String::with_capacity(8);
+        frac.push(char);
+        index += 1;
+
+        if self.max_index <= index {
+            return "".to_owned();
+        }
+
+        char = self.characters[index];
+
+        if !char.is_digit(10) {
+            return "".to_owned();
+        }
+
+        frac.push(char);
+        index += 1;
+
+        frac.push_str(&self.next_integer(index, 10));
+        frac
+    }
+
+    fn next_exp(&mut self, mut index: usize) -> String {
+        if !self.remain() {
+            return "".to_owned();
+        }
+
+        let mut char = self.characters[index];
 
         if char != 'e' && char != 'E' {
             return "".to_owned();
@@ -634,8 +776,8 @@ impl Lexer {
 
         let mut exp = String::with_capacity(8);
         exp.push(char);
+        index += 1;
 
-        let mut index = self.index + 1;
         if self.max_index <= index {
             return "".to_owned();
         }
@@ -658,33 +800,121 @@ impl Lexer {
         }
 
         exp.push(char);
-        self.index += exp.len();
-        self.line_offset += exp.len();
+        index += 1;
 
-        exp.push_str(&self.next_integer(10));
+        exp.push_str(&self.next_integer(index, 10));
         exp
     }
 
-    // fn next_literal_suffix(&mut self) -> String {
-    //     if !self.remain() {
-    //         return "".to_owned();
-    //     }
+    fn next_literal_suffix(&self, index: usize) -> String {
+        if !self.remain() {
+            return "".to_owned();
+        }
 
-    //     match unsafe { self.current() } {
-    //         'b' => try_character!(self, {
-    //             'y' => { try_character!(self, {
-    //                 't' => { try_character!(self, {
-    //                     'e' => { return string!(self, "byte"); }
-    //                 }) }
-    //                 _ => { return "".to_owned(); }
-    //             }) }
-    //             _ => { return "".to_owned() }
-    //         }),
-    //         _ => return "".to_owned(),
-    //     }
-    // }
+        match self.char() {
+            'b' => try_character! {
+                self,
+                index,
+                'y' => try_character! {
+                    self,
+                    index,
+                    't' => try_character! {
+                        self,
+                        index,
+                        'e' => return "byte".to_owned(),
+                        _ => return "".to_owned()
+                    },
+                    _ => return "".to_owned()
+                },
+                _ => return "".to_owned()
+            },
+            'c' => try_character! {
+                self,
+                index,
+                'h' => try_character! {
+                    self,
+                    index,
+                    'a' => try_character! {
+                        self,
+                        index,
+                        'r' => return "char".to_owned(),
+                        _ => return "".to_owned()
+                    },
+                    _ => return "".to_owned()
+                },
+                _ => return "".to_owned()
+            },
+            'f' => try_character! {
+                self,
+                index,
+                '6' => try_character! {
+                    self,
+                    index,
+                    '4' => return "f64".to_owned(),
+                    _ => return "".to_owned()
+                },
+                _ => return "".to_owned()
+            },
+            'i' => try_character! {
+                self,
+                index,
+                '6' => try_character! {
+                    self,
+                    index,
+                    '4' => return "i64".to_owned(),
+                    _ => return "".to_owned()
+                },
+                's' => try_character! {
+                    self,
+                    index,
+                    'i' => try_character! {
+                        self,
+                        index,
+                        'z' => try_character! {
+                            self,
+                            index,
+                            'e' => return "isize".to_owned(),
+                            _ => return "".to_owned()
+                        },
+                        _ => return "".to_owned()
+                    },
+                    _ => return "".to_owned()
+                },
+                _ => return "".to_owned()
+            },
+            'u' => try_character! {
+                self,
+                index,
+                '6' => try_character! {
+                    self,
+                    index,
+                    '4' => return "u64".to_owned(),
+                    _ => return "".to_owned()
+                },
+                's' => try_character! {
+                    self,
+                    index,
+                    'i' => try_character! {
+                        self,
+                        index,
+                        'z' => try_character! {
+                            self,
+                            index,
+                            'e' => return "usize".to_owned(),
+                            _ => return "".to_owned()
+                        },
+                        _ => return "".to_owned()
+                    },
+                    _ => return "".to_owned()
+                },
+                _ => return "".to_owned()
+            },
+            _ => return "".to_owned(),
+        }
+    }
 }
 
+#[cfg(test)]
 mod utils {
     use super::*;
 
@@ -913,25 +1143,222 @@ mod tests {
     }
 
     #[test]
-    fn test_statements() {
-        let input = "let x = if true { 1 } else { 0 }";
+    fn test_literals_bool() {
+        let input = "true false";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [TokenType::LiteralBool(true), TokenType::LiteralBool(false)]
+        );
+    }
+
+    #[test]
+    fn test_literals_integer() {
+        let input = "0 1 2 3 4 5 00 11 22 33 44 55 000 111 222 333 444 555";
         let tokens = utils::collect_all_tokens(input);
         let token_ty = utils::extract_token_ty(&tokens);
         assert_eq!(
             token_ty,
             [
-                TokenType::KeywordLet,
-                TokenType::Id,
-                TokenType::OpAssign,
-                TokenType::KeywordIf,
-                TokenType::LiteralBool(true),
-                TokenType::PuncBraceL,
-                TokenType::LiteralInteger("1".to_owned()),
-                TokenType::PuncBraceR,
-                TokenType::KeywordElse,
-                TokenType::PuncBraceL,
                 TokenType::LiteralInteger("0".to_owned()),
-                TokenType::PuncBraceR,
+                TokenType::LiteralInteger("1".to_owned()),
+                TokenType::LiteralInteger("2".to_owned()),
+                TokenType::LiteralInteger("3".to_owned()),
+                TokenType::LiteralInteger("4".to_owned()),
+                TokenType::LiteralInteger("5".to_owned()),
+                TokenType::LiteralInteger("00".to_owned()),
+                TokenType::LiteralInteger("11".to_owned()),
+                TokenType::LiteralInteger("22".to_owned()),
+                TokenType::LiteralInteger("33".to_owned()),
+                TokenType::LiteralInteger("44".to_owned()),
+                TokenType::LiteralInteger("55".to_owned()),
+                TokenType::LiteralInteger("000".to_owned()),
+                TokenType::LiteralInteger("111".to_owned()),
+                TokenType::LiteralInteger("222".to_owned()),
+                TokenType::LiteralInteger("333".to_owned()),
+                TokenType::LiteralInteger("444".to_owned()),
+                TokenType::LiteralInteger("555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_signed_integer() {
+        let input = "+0 -1 +2 -3 +4 -5 +00 -11 +22 -33 +44 -55 +000 -111 +222 -333 +444 -555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralInteger("+0".to_owned()),
+                TokenType::LiteralInteger("-1".to_owned()),
+                TokenType::LiteralInteger("+2".to_owned()),
+                TokenType::LiteralInteger("-3".to_owned()),
+                TokenType::LiteralInteger("+4".to_owned()),
+                TokenType::LiteralInteger("-5".to_owned()),
+                TokenType::LiteralInteger("+00".to_owned()),
+                TokenType::LiteralInteger("-11".to_owned()),
+                TokenType::LiteralInteger("+22".to_owned()),
+                TokenType::LiteralInteger("-33".to_owned()),
+                TokenType::LiteralInteger("+44".to_owned()),
+                TokenType::LiteralInteger("-55".to_owned()),
+                TokenType::LiteralInteger("+000".to_owned()),
+                TokenType::LiteralInteger("-111".to_owned()),
+                TokenType::LiteralInteger("+222".to_owned()),
+                TokenType::LiteralInteger("-333".to_owned()),
+                TokenType::LiteralInteger("+444".to_owned()),
+                TokenType::LiteralInteger("-555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_f64_frac() {
+        let input = "0.0 1.1 2.2 3.3 4.4 5.5 00.00 11.11 22.22 33.33 44.44 55.55 000.000 111.111 222.222 333.333 444.444 555.555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("0.0".to_owned()),
+                TokenType::LiteralF64("1.1".to_owned()),
+                TokenType::LiteralF64("2.2".to_owned()),
+                TokenType::LiteralF64("3.3".to_owned()),
+                TokenType::LiteralF64("4.4".to_owned()),
+                TokenType::LiteralF64("5.5".to_owned()),
+                TokenType::LiteralF64("00.00".to_owned()),
+                TokenType::LiteralF64("11.11".to_owned()),
+                TokenType::LiteralF64("22.22".to_owned()),
+                TokenType::LiteralF64("33.33".to_owned()),
+                TokenType::LiteralF64("44.44".to_owned()),
+                TokenType::LiteralF64("55.55".to_owned()),
+                TokenType::LiteralF64("000.000".to_owned()),
+                TokenType::LiteralF64("111.111".to_owned()),
+                TokenType::LiteralF64("222.222".to_owned()),
+                TokenType::LiteralF64("333.333".to_owned()),
+                TokenType::LiteralF64("444.444".to_owned()),
+                TokenType::LiteralF64("555.555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_signed_f64_frac() {
+        let input = "+0.0 -1.1 +2.2 -3.3 +4.4 -5.5 +00.00 -11.11 +22.22 -33.33 +44.44 -55.55 +000.000 -111.111 +222.222 -333.333 +444.444 -555.555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("+0.0".to_owned()),
+                TokenType::LiteralF64("-1.1".to_owned()),
+                TokenType::LiteralF64("+2.2".to_owned()),
+                TokenType::LiteralF64("-3.3".to_owned()),
+                TokenType::LiteralF64("+4.4".to_owned()),
+                TokenType::LiteralF64("-5.5".to_owned()),
+                TokenType::LiteralF64("+00.00".to_owned()),
+                TokenType::LiteralF64("-11.11".to_owned()),
+                TokenType::LiteralF64("+22.22".to_owned()),
+                TokenType::LiteralF64("-33.33".to_owned()),
+                TokenType::LiteralF64("+44.44".to_owned()),
+                TokenType::LiteralF64("-55.55".to_owned()),
+                TokenType::LiteralF64("+000.000".to_owned()),
+                TokenType::LiteralF64("-111.111".to_owned()),
+                TokenType::LiteralF64("+222.222".to_owned()),
+                TokenType::LiteralF64("-333.333".to_owned()),
+                TokenType::LiteralF64("+444.444".to_owned()),
+                TokenType::LiteralF64("-555.555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_f64_exp() {
+        let input = "0e0 1e1 2e2 3e3 4e4 5e5 00E00 11E11 22E22 33E33 44E44 55E55 000e000 111e111 222e222 333e333 444e444 555e555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("0e0".to_owned()),
+                TokenType::LiteralF64("1e1".to_owned()),
+                TokenType::LiteralF64("2e2".to_owned()),
+                TokenType::LiteralF64("3e3".to_owned()),
+                TokenType::LiteralF64("4e4".to_owned()),
+                TokenType::LiteralF64("5e5".to_owned()),
+                TokenType::LiteralF64("00E00".to_owned()),
+                TokenType::LiteralF64("11E11".to_owned()),
+                TokenType::LiteralF64("22E22".to_owned()),
+                TokenType::LiteralF64("33E33".to_owned()),
+                TokenType::LiteralF64("44E44".to_owned()),
+                TokenType::LiteralF64("55E55".to_owned()),
+                TokenType::LiteralF64("000e000".to_owned()),
+                TokenType::LiteralF64("111e111".to_owned()),
+                TokenType::LiteralF64("222e222".to_owned()),
+                TokenType::LiteralF64("333e333".to_owned()),
+                TokenType::LiteralF64("444e444".to_owned()),
+                TokenType::LiteralF64("555e555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_signed_f64_exp() {
+        let input = "+0e0 -1e1 +2e2 -3e3 +4e4 -5e5 +00E00 -11E11 +22E22 -33E33 +44E44 -55E55 +000e000 -111e111 +222e222 -333e333 +444e444 -555e555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("+0e0".to_owned()),
+                TokenType::LiteralF64("-1e1".to_owned()),
+                TokenType::LiteralF64("+2e2".to_owned()),
+                TokenType::LiteralF64("-3e3".to_owned()),
+                TokenType::LiteralF64("+4e4".to_owned()),
+                TokenType::LiteralF64("-5e5".to_owned()),
+                TokenType::LiteralF64("+00E00".to_owned()),
+                TokenType::LiteralF64("-11E11".to_owned()),
+                TokenType::LiteralF64("+22E22".to_owned()),
+                TokenType::LiteralF64("-33E33".to_owned()),
+                TokenType::LiteralF64("+44E44".to_owned()),
+                TokenType::LiteralF64("-55E55".to_owned()),
+                TokenType::LiteralF64("+000e000".to_owned()),
+                TokenType::LiteralF64("-111e111".to_owned()),
+                TokenType::LiteralF64("+222e222".to_owned()),
+                TokenType::LiteralF64("-333e333".to_owned()),
+                TokenType::LiteralF64("+444e444".to_owned()),
+                TokenType::LiteralF64("-555e555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_f64_signed_exp() {
+        let input = "0e+0 1e-1 2e+2 3e-3 4e+4 5e-5 00E+00 11E-11 22E+22 33E-33 44E+44 55E-55 000e+000 111e-111 222e+222 333e-333 444e+444 555e-555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("0e+0".to_owned()),
+                TokenType::LiteralF64("1e-1".to_owned()),
+                TokenType::LiteralF64("2e+2".to_owned()),
+                TokenType::LiteralF64("3e-3".to_owned()),
+                TokenType::LiteralF64("4e+4".to_owned()),
+                TokenType::LiteralF64("5e-5".to_owned()),
+                TokenType::LiteralF64("00E+00".to_owned()),
+                TokenType::LiteralF64("11E-11".to_owned()),
+                TokenType::LiteralF64("22E+22".to_owned()),
+                TokenType::LiteralF64("33E-33".to_owned()),
+                TokenType::LiteralF64("44E+44".to_owned()),
+                TokenType::LiteralF64("55E-55".to_owned()),
+                TokenType::LiteralF64("000e+000".to_owned()),
+                TokenType::LiteralF64("111e-111".to_owned()),
+                TokenType::LiteralF64("222e+222".to_owned()),
+                TokenType::LiteralF64("333e-333".to_owned()),
+                TokenType::LiteralF64("444e+444".to_owned()),
+                TokenType::LiteralF64("555e-555".to_owned()),
             ]
         );
     }
