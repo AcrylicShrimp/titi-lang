@@ -26,7 +26,15 @@ impl<'s> Iterator for Lexer<'s> {
         }
 
         match char {
-            '#' => while let Some(char) = self.cursor.lookup(0) {},
+            '#' => {
+                while let Some(char) = self.cursor.lookup(0) {
+                    if char == '\n' {
+                        break;
+                    }
+
+                    self.cursor.consume(1);
+                }
+            }
             _ => {}
         }
 
