@@ -7,15 +7,15 @@ pub struct TokenIntegerLiteral {
 }
 
 impl TokenIntegerLiteral {
-    pub fn new(kind: TokenIntegerLiteralKind, suffix_len: bool) -> Self {
+    pub fn new(kind: TokenIntegerLiteralKind, suffix_len: usize) -> Self {
         Self { kind, suffix_len }
     }
 
     pub fn kind(&self) -> TokenIntegerLiteralKind {
-        &self.kind
+        self.kind
     }
 
-    pub fn suffix_len(&self) -> bool {
-        &self.suffix_len
+    pub fn suffix_len(&self) -> usize {
+        self.suffix_len
     }
 }

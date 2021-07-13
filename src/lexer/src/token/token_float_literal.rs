@@ -1,13 +1,14 @@
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct TokenFloatLiteral {
-    suffix_len: bool,
+    suffix_len: usize,
 }
 
 impl TokenFloatLiteral {
-    pub fn new(suffix_len: bool) -> Self {
+    pub fn new(suffix_len: usize) -> Self {
         Self { suffix_len }
     }
 
-    pub fn suffix_len(&self) -> bool {
-        &self.suffix_len
+    pub fn suffix_len(&self) -> usize {
+        self.suffix_len
     }
 }
