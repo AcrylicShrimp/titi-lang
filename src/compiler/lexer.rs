@@ -279,25 +279,73 @@ impl Lexer {
                     '=' => return lit! { self, TokenType::OpAssignBitNot, "~=" },
                     _ => return lit! { self, TokenType::OpBitNot, "~" }
                 },
-                '0' => try_character! {
-                    self,
-                    index,
-                    'b' => {
-                        unimplemented!()
+                '0' => {
+                    if self.max_index <= self.index + 1 {
+                        return lit! { self, TokenType::LiteralInteger("0".to_owned()), "0" };
                     }
-                    'B' => {
-                        unimplemented!()
+
+                    let code = self.characters[self.index + 1];
+
+                    match code {
+                        'b' | 'B' => {
+                            if self.max_index <= self.index + 2 {
+                                return lit! { self, TokenType::LiteralInteger("0".to_owned()), "0" };
+                            }
+
+                            match self.characters[self.index + 2] {
+                                '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                                    token_builder!(self, builder, content);
+
+                                    content.push('0');
+                                    content.push(code);
+                                    content.push_str(&self.next_integer(self.index + 2, 10));
+
+                                    self.advance_by(content.len());
+
+                                    let suffix = self.next_literal_suffix(self.index);
+
+                                    return builder.build(
+                                        match suffix {
+                                            "byte" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixByte,
+                                            ),
+                                            "char" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixChar,
+                                            ),
+                                            "i64" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixI64,
+                                            ),
+                                            "u64" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixU64,
+                                            ),
+                                            "isize" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixISize,
+                                            ),
+                                            "usize" => TokenType::Error(
+                                                TokenError::F64LiteralFollowedBySuffixUSize,
+                                            ),
+                                            "f64" => TokenType::LiteralF64(content.clone()),
+                                            _ => unreachable!(),
+                                        },
+                                        content,
+                                    );
+                                }
+                                _ => {
+                                    return self.next_number();
+                                }
+                            }
+                        }
+                        'x' | 'X' => {}
+                        '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                            token_builder!(self, builder, content);
+                            content.push_str("0b");
+                            self.advance();
+                        }
+                        _ => {
+                            return self.next_number();
+                        }
                     }
-                    'x' => {
-                        unimplemented!()
-                    }
-                    'X' => {
-                        unimplemented!()
-                    }
-                    _ => {
-                        return self.next_number();
-                    }
-                },
+                }
                 '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                     return self.next_number();
                 }
@@ -1449,6 +1497,98 @@ mod tests {
                 TokenType::LiteralF64("-333.333e333".to_owned()),
                 TokenType::LiteralF64("+444.444e444".to_owned()),
                 TokenType::LiteralF64("-555.555e555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_f64_frac_signed_exp() {
+        let input = "0.0e+0 1.1e-1 2.2e+2 3.3e-3 4.4e+4 5.5e-5 00.00E+00 11.11E-11 22.22E+22 33.33E-33 44.44E+44 55.55E-55 000.000e+000 111.111e-111 222.222e+222 333.333e-333 444.444e+444 555.555e-555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("0.0e+0".to_owned()),
+                TokenType::LiteralF64("1.1e-1".to_owned()),
+                TokenType::LiteralF64("2.2e+2".to_owned()),
+                TokenType::LiteralF64("3.3e-3".to_owned()),
+                TokenType::LiteralF64("4.4e+4".to_owned()),
+                TokenType::LiteralF64("5.5e-5".to_owned()),
+                TokenType::LiteralF64("00.00E+00".to_owned()),
+                TokenType::LiteralF64("11.11E-11".to_owned()),
+                TokenType::LiteralF64("22.22E+22".to_owned()),
+                TokenType::LiteralF64("33.33E-33".to_owned()),
+                TokenType::LiteralF64("44.44E+44".to_owned()),
+                TokenType::LiteralF64("55.55E-55".to_owned()),
+                TokenType::LiteralF64("000.000e+000".to_owned()),
+                TokenType::LiteralF64("111.111e-111".to_owned()),
+                TokenType::LiteralF64("222.222e+222".to_owned()),
+                TokenType::LiteralF64("333.333e-333".to_owned()),
+                TokenType::LiteralF64("444.444e+444".to_owned()),
+                TokenType::LiteralF64("555.555e-555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_signed_f64_frac_signed_exp() {
+        let input = "+0.0e+0 -1.1e-1 +2.2e+2 -3.3e-3 +4.4e+4 -5.5e-5 +00.00E+00 -11.11E-11 +22.22E+22 -33.33E-33 +44.44E+44 -55.55E-55 +000.000e+000 -111.111e-111 +222.222e+222 -333.333e-333 +444.444e+444 -555.555e-555";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralF64("+0.0e+0".to_owned()),
+                TokenType::LiteralF64("-1.1e-1".to_owned()),
+                TokenType::LiteralF64("+2.2e+2".to_owned()),
+                TokenType::LiteralF64("-3.3e-3".to_owned()),
+                TokenType::LiteralF64("+4.4e+4".to_owned()),
+                TokenType::LiteralF64("-5.5e-5".to_owned()),
+                TokenType::LiteralF64("+00.00E+00".to_owned()),
+                TokenType::LiteralF64("-11.11E-11".to_owned()),
+                TokenType::LiteralF64("+22.22E+22".to_owned()),
+                TokenType::LiteralF64("-33.33E-33".to_owned()),
+                TokenType::LiteralF64("+44.44E+44".to_owned()),
+                TokenType::LiteralF64("-55.55E-55".to_owned()),
+                TokenType::LiteralF64("+000.000e+000".to_owned()),
+                TokenType::LiteralF64("-111.111e-111".to_owned()),
+                TokenType::LiteralF64("+222.222e+222".to_owned()),
+                TokenType::LiteralF64("-333.333e-333".to_owned()),
+                TokenType::LiteralF64("+444.444e+444".to_owned()),
+                TokenType::LiteralF64("-555.555e-555".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_literals_suffix_byte() {
+        let input = "0byte +0byte -0byte 0.0byte +0.0byte -0.0byte 0e0byte +0e0byte -0e0byte 0e+0byte 0e-0byte +0e+0byte -0e-0byte 0.0e0byte +0.0e0byte -0.0e0byte 0.0e+0byte 0.0e-0byte +0.0e+0byte -0.0e-0byte";
+        let tokens = utils::collect_all_tokens(input);
+        let token_ty = utils::extract_token_ty(&tokens);
+        assert_eq!(
+            token_ty,
+            [
+                TokenType::LiteralByte("0byte".to_owned()),
+                TokenType::LiteralByte("+0byte".to_owned()),
+                TokenType::LiteralByte("-0byte".to_owned()),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
+                TokenType::Error(TokenError::F64LiteralFollowedBySuffixByte),
             ]
         );
     }
