@@ -106,8 +106,7 @@ fn is_id_continue(char: char) -> bool {
 }
 
 fn consume_number(cursor: &mut Cursor, first_char: char) -> TokenNumberLiteralKind {
-	if first_char== '0' {
-		
+    if first_char == '0' {}
     TokenNumberLiteralKind::Float
 }
 
