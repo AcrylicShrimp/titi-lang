@@ -106,8 +106,81 @@ fn is_id_continue(char: char) -> bool {
 }
 
 fn consume_number(cursor: &mut Cursor, first_char: char) -> TokenNumberLiteralKind {
-    if first_char == '0' {}
-    TokenNumberLiteralKind::Float
+    let kind = if first_char == '0' {
+        match cursor.first() {
+            'b' if cursor.second().is_digit(2) => {
+                cursor.consume();
+                consume_while(cursor, |char| char.is_digit(2));
+                TokenIntegerLiteralKind::Binary
+            }
+            'o' if cursor.second().is_digit(8) => {
+                cursor.consume();
+                consume_while(cursor, |char| char.is_digit(8));
+                TokenIntegerLiteralKind::Octal
+            }
+            'x' if cursor.second().is_digit(16) => {
+                cursor.consume();
+                consume_while(cursor, |char| char.is_digit(16));
+                TokenIntegerLiteralKind::Hexadecimal
+            }
+            '0'..='9' => {
+                cursor.consume();
+                consume_while(cursor, |char| char.is_digit(10));
+                TokenIntegerLiteralKind::Decimal
+            }
+            '.' | 'e' | 'E' => TokenIntegerLiteralKind::Decimal,
+            _ => return TokenNumberLiteralKind::Integer(TokenIntegerLiteralKind::Decimal),
+        }
+    } else {
+        TokenIntegerLiteralKind::Decimal
+    };
+
+    if kind != TokenIntegerLiteralKind::Decimal {
+        return TokenNumberLiteralKind::Integer(kind);
+    }
+
+    match cursor.first() {
+        '.' if cursor.second().is_digit(10) => {
+            cursor.consume();
+            consume_while(cursor, |char| char.is_digit(10));
+
+            match (cursor.first(), cursor.second(), cursor.lookup(2)) {
+                ('e' | 'E', '+' | '-', digit) if digit.is_digit(10) => {
+                    cursor.consume();
+                    cursor.consume();
+                    consume_while(cursor, |char| char.is_digit(10));
+                }
+                ('e' | 'E', digit, _) if digit.is_digit(10) => {
+                    cursor.consume();
+                    consume_while(cursor, |char| char.is_digit(10));
+                }
+                _ => {}
+            }
+
+            TokenNumberLiteralKind::Float
+        }
+        'e' | 'E'
+            if match cursor.second() {
+                '+' | '-' if cursor.lookup(2).is_digit(10) => true,
+                digit if digit.is_digit(10) => true,
+                _ => false,
+            } =>
+        {
+            cursor.consume();
+
+            match cursor.first() {
+                '+' | '-' => {
+                    cursor.consume();
+                }
+                _ => {}
+            }
+
+            consume_while(cursor, |char| char.is_digit(10));
+
+            TokenNumberLiteralKind::Float
+        }
+        _ => TokenNumberLiteralKind::Integer(TokenIntegerLiteralKind::Decimal),
+    }
 }
 
 fn consume_single_quoted(cursor: &mut Cursor) -> bool {
