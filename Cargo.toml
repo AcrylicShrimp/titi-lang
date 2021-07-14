@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 ast = { path = "src/ast" }
-lexer = { path = "src/lexer" }
+low_lexer = { path = "src/low_lexer" }
 lazy_static = { version = "1" }

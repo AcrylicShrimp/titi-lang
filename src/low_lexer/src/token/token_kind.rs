@@ -1,6 +1,7 @@
 use crate::TokenErrorKind;
 use crate::TokenLiteralKind;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
     Error(TokenErrorKind),
     Whitespace,
