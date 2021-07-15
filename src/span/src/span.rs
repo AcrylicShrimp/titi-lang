@@ -1,59 +1,37 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use crate::Pos;
+use std::cmp::{max, min};
 
-pub struct Span<'s> {
-    line: usize,
-    line_offset: usize,
-    source: &'s str,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Span {
+    low: Pos,
+    high: Pos,
 }
 
-impl<'s> Span<'s> {
-    pub fn new(line: usize, line_offset: usize, source: &'s str) -> Self {
-        Self {
-            line,
-            line_offset,
-            source,
-        }
+impl Span {
+    pub fn new(low: Pos, high: Pos) -> Self {
+        Self { low, high }
     }
-}
 
-impl<'s> Display for Span<'s> {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let lines = self.source.split('\n');
+    pub fn low(&self) -> Pos {
+        self.low
+    }
 
-        let mut line_number = 0;
-        let max_line_number = lines.clone().count();
-        let mut count = 0;
-        let max_count = self.source.len();
+    pub fn high(&self) -> Pos {
+        self.high
+    }
 
-        let line_number_width = ((self.line + max_line_number) as f64).log10().floor() as usize;
+    pub fn len(&self) -> u32 {
+        self.high - self.low
+    }
 
-        for line in self.source.split('\n') {
-            writeln!(
-                f,
-                "{:>line_number_width$} : ",
-                self.line + line_number,
-                line_number_width = line_number_width
-            )?;
+    pub fn contains(&self, other: Span) -> bool {
+        self.low <= other.low && self.high >= other.high
+    }
 
-            let (offset, length) = if line_number == 0 {
-                (0, 0)
-            } else if line_number + 1 == max_line_number {
-                (0, 0)
-            } else {
-                (0, line.len())
-            };
-
-            writeln!(
-                f,
-                "{:offset$}{}",
-                "^".repeat(length),
-                offset = line_number_width + 3 + offset
-            )?;
-
-            line_number += 1;
-            count += line.len() + 1;
+    pub fn merge(&self, other: Span) -> Span {
+        Span {
+            low: min(self.low, other.low),
+            high: max(self.high, other.high),
         }
-
-        Ok(())
     }
 }
