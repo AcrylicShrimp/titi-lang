@@ -1,4 +1,4 @@
-use crate::TokenBinaryOpKind;
+use crate::{TokenBinaryOpKind, TokenUnaryOpKind};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
@@ -13,4 +13,5 @@ pub enum TokenKind {
     Comma,        // ","
     Semicolon,    // ";"
     BinaryOp(TokenBinaryOpKind),
+    UnaryOp(TokenUnaryOpKind),
 }
