@@ -1,5 +1,5 @@
 [package]
-name = "high_lexer"
+name = "str_interner"
 version = "0.0.1"
 authors = ["AcrylicShrimp <led789zxpp@naver.com>"]
 edition = "2018"
@@ -7,8 +7,4 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = "1"
-low_lexer = { path = "../low_lexer" }
-parking_lot = "0.11"
-span = { path = "../span" }
-str_interner = { path = "../str_interner" }
+rustc-hash = "1"

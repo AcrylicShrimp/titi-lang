@@ -1,21 +1,22 @@
 use crate::TokenKind;
+use span::Span;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     kind: TokenKind,
-    len: usize,
+    span: Span,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, len: usize) -> Self {
-        Self { kind, len }
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self { kind, span }
     }
 
-    pub fn kind(&self) -> TokenKind {
-        self.kind
+    pub fn kind(&self) -> &TokenKind {
+        &self.kind
     }
 
-    pub fn len(&self) -> usize {
-        self.len
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
