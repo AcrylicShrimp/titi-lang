@@ -1,3 +1,5 @@
+#[cfg(feature = "global_instance")]
+pub(crate) mod global_instance;
 mod str_chunk;
 mod str_idx;
 
@@ -30,7 +32,9 @@ impl StrInterner {
         self.strings[u32::from(idx) as usize]
     }
 
-    pub fn intern(&mut self, str: &str) -> StrIdx {
+    pub fn intern<S: AsRef<str>>(&mut self, str: S) -> StrIdx {
+        let str = str.as_ref();
+
         if let Some(&reverse) = self.reversed.get(str) {
             return reverse;
         }

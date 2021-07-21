@@ -11,4 +11,4 @@ lazy_static = "1"
 low_lexer = { path = "../low_lexer" }
 parking_lot = "0.11"
 span = { path = "../span" }
-str_interner = { path = "../str_interner" }
+str_interner = { path = "../str_interner", features = ["global_instance"] }
