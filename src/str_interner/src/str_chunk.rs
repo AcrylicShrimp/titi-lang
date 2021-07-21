@@ -17,7 +17,7 @@ impl StrChunk {
     }
 
     pub fn remain(&self) -> usize {
-        4096 - (self.ptr as usize - self.data.as_ptr() as usize)
+        self.data.len() - (self.ptr as usize - self.data.as_ptr() as usize)
     }
 
     pub fn alloc(&mut self, size: usize) -> Option<*mut u8> {
