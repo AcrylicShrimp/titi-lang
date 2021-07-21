@@ -1,16 +1,17 @@
-use crate::{LineCol, Pos, Span};
+use crate::{LineCol, Pos, SourcePath, Span};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 pub struct Source {
     span: Span,
     name: String,
+    path: SourcePath,
     content: String,
     lines: Vec<Pos>,
 }
 
 impl Source {
-    pub fn new(span: Span, name: String, content: String) -> Self {
+    pub fn new(span: Span, name: String, path: SourcePath, content: String) -> Self {
         let mut lines = vec![span.low()];
         lines.extend(
             content
@@ -21,6 +22,7 @@ impl Source {
         Self {
             span,
             name,
+            path,
             content,
             lines,
         }
@@ -32,6 +34,10 @@ impl Source {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn path(&self) -> &SourcePath {
+        &self.path
     }
 
     pub fn content(&self) -> &str {

@@ -1,4 +1,4 @@
-use crate::{TokenBinaryOpKind, TokenLiteral, TokenUnaryOpKind};
+use crate::TokenLiteral;
 use str_interner::StrIdx;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -13,21 +13,47 @@ pub enum TokenKind {
     Dot,          // "."
     Comma,        // ","
     Semicolon,    // ";"
-    BinaryOp(TokenBinaryOpKind),
-    UnaryOp(TokenUnaryOpKind),
+    // Assignment operators
+    Assign,       // "="
+    AssignAdd,    // "+="
+    AssignSub,    // "-="
+    AssignMul,    // "*="
+    AssignDiv,    // "/="
+    AssignMod,    // "%="
+    AssignShl,    // "<<="
+    AssignShr,    // ">>="
+    AssignBitOr,  // "|="
+    AssignBitAnd, // "&="
+    AssignBitXor, // "^="
+    AssignBitNot, // "~="
+    // Cmp operators
+    Eq, // "=="
+    Ne, // "!="
+    Lt, // "<"
+    Gt, // ">"
+    Le, // "<="
+    Ge, // ">="
+    // Binary operators
+    Add,    // "+"
+    Sub,    // "-"
+    Mul,    // "*"
+    Div,    // "/"
+    Mod,    // "%"
+    Shl,    // "<<"
+    Shr,    // ">>"
+    BitOr,  // "|"
+    BitAnd, // "&"
+    BitXor, // "^"
+    LogOr,  // "||"
+    LogAnd, // "&&"
+    // Unary operators
+    BitNot, // "~"
+    LogNot, // "!"
     Literal(TokenLiteral),
     Id(StrIdx),
 }
 
 impl TokenKind {
-    pub fn binary_op(op: TokenBinaryOpKind) -> Self {
-        Self::BinaryOp(op)
-    }
-
-    pub fn unary_op(op: TokenUnaryOpKind) -> Self {
-        Self::UnaryOp(op)
-    }
-
     pub fn literal(literal: TokenLiteral) -> Self {
         Self::Literal(literal)
     }

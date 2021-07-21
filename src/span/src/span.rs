@@ -28,6 +28,13 @@ impl Span {
         self.low <= other.low && self.high >= other.high
     }
 
+    pub fn to(&self, to: Span) -> Span {
+        Span {
+            low: self.low,
+            high: to.high,
+        }
+    }
+
     pub fn merge(&self, other: Span) -> Span {
         Span {
             low: min(self.low, other.low),

@@ -3,13 +3,13 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SpanCol {
+pub struct SpanLoc {
     source: Arc<Source>,
     begin: LineCol,
     end: LineCol,
 }
 
-impl SpanCol {
+impl SpanLoc {
     pub fn new(source: Arc<Source>, begin: LineCol, end: LineCol) -> Self {
         Self { source, begin, end }
     }
@@ -27,7 +27,7 @@ impl SpanCol {
     }
 }
 
-impl Display for SpanCol {
+impl Display for SpanLoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

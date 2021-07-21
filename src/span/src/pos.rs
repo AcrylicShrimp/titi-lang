@@ -7,6 +7,10 @@ impl Pos {
     pub fn new(pos: u32) -> Self {
         Self(pos)
     }
+
+    pub fn offset(&self, offset: u32) -> Self {
+        Self(self.0 + offset)
+    }
 }
 
 impl Add<Pos> for Pos {
