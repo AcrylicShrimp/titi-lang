@@ -1,7 +1,7 @@
 use crate::Pos;
 use std::cmp::{max, min};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     low: Pos,
     high: Pos,

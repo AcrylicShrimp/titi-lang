@@ -5,6 +5,8 @@ use low_lexer::*;
 mod compiler;
 
 fn main() {
+    "25"_;
+
     let mut lexer = compiler::Lexer::new(
         r#"
     

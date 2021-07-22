@@ -26,9 +26,11 @@ use std::iter::from_fn as iter_from_fn;
 //     })
 // }
 
-fn convert(token: LowToken) -> Token {
+fn convert(token: LowToken) -> Option<Token> {
     match token.kind() {
-        LowTokenKind::Error(_) => todo!(),
+        LowTokenKind::Unknown => {
+            return None;
+        }
         LowTokenKind::Whitespace => todo!(),
         LowTokenKind::Comment => todo!(),
         LowTokenKind::OpenParen => todo!(),

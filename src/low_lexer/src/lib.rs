@@ -76,7 +76,7 @@ fn next(input: &str) -> Token {
         '"' => TokenKind::Literal(TokenLiteralKind::DoubleQuotedStr(TokenStrLiteral::new(
             consume_double_quoted(&mut cursor),
         ))),
-        _ => TokenKind::Error(TokenErrorKind::InvalidCharacter),
+        _ => TokenKind::Unknown,
     };
 
     Token::new(kind, cursor.len_consumed())
