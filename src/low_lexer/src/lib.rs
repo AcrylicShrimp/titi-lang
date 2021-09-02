@@ -89,16 +89,16 @@ fn consume_while(cursor: &mut Cursor, mut pred: impl FnMut(char) -> bool) {
 }
 
 fn is_id_start(char: char) -> bool {
-    ('a'..'z').contains(&char)
-        || ('A'..'Z').contains(&char)
+    ('a'..='z').contains(&char)
+        || ('A'..='Z').contains(&char)
         || (char == '_')
         || (char > '\x7f' && UnicodeXID::is_xid_start(char))
 }
 
 fn is_id_continue(char: char) -> bool {
-    ('a'..'z').contains(&char)
-        || ('A'..'Z').contains(&char)
-        || ('0'..'9').contains(&char)
+    ('a'..='z').contains(&char)
+        || ('A'..='Z').contains(&char)
+        || ('0'..='9').contains(&char)
         || (char == '_')
         || (char > '\x7f' && UnicodeXID::is_xid_continue(char))
 }
