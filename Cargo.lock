@@ -3,13 +3,6 @@
 version = 3
 
 [[package]]
-name = "ast"
-version = "0.0.1"
-dependencies = [
- "span",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -147,10 +140,11 @@ dependencies = [
 name = "titi-lang"
 version = "0.1.0"
 dependencies = [
- "ast",
  "high_lexer",
  "lazy_static",
  "low_lexer",
+ "span",
+ "str_interner",
 ]
 
 [[package]]
