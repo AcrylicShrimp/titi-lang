@@ -177,7 +177,10 @@ fn consume_number(cursor: &mut Cursor, first_char: char) -> TokenNumberLiteralKi
 
             TokenNumberLiteralKind::Float
         }
-        _ => TokenNumberLiteralKind::Integer(TokenIntegerLiteralKind::Decimal),
+        _ => {
+            consume_while(cursor, |char| char.is_digit(10));
+            TokenNumberLiteralKind::Integer(TokenIntegerLiteralKind::Decimal)
+        }
     }
 }
 
