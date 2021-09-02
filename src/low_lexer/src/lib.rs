@@ -182,6 +182,7 @@ fn consume_number(cursor: &mut Cursor, first_char: char) -> TokenNumberLiteralKi
 }
 
 fn consume_single_quoted(cursor: &mut Cursor) -> bool {
+    // Normal case e.g. 'a'
     if cursor.first() != '\\' && cursor.second() == '\'' {
         cursor.consume();
         cursor.consume();
