@@ -59,7 +59,7 @@ fn next(input: &str) -> Token {
         ';' => TokenKind::Semicolon,
         '=' => TokenKind::Eq,
         '!' => TokenKind::Bang,
-        '<' => TokenKind::Ls,
+        '<' => TokenKind::Lt,
         '>' => TokenKind::Gt,
         '+' => TokenKind::Plus,
         '-' => TokenKind::Minus,

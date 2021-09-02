@@ -16,7 +16,7 @@ pub enum TokenKind {
     Semicolon,    // ";"
     Eq,           // "="
     Bang,         // "!"
-    Ls,           // "<"
+    Lt,           // "<"
     Gt,           // ">"
     Plus,         // "+"
     Minus,        // "-"
