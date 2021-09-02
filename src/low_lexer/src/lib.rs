@@ -83,10 +83,8 @@ fn next(input: &str) -> Token {
 }
 
 fn consume_while(cursor: &mut Cursor, mut pred: impl FnMut(char) -> bool) {
-    while let Some(c) = cursor.consume() {
-        if !pred(c) {
-            break;
-        }
+    while pred(cursor.lookup(0)) {
+        cursor.consume();
     }
 }
 
