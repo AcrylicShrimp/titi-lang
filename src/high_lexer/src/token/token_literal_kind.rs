@@ -1,9 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenLiteralKind {
     Bool,
-    Byte,
-    Char,
-    Integer,
+    IntegerBinary,
+    IntegerOctal,
+    IntegerHexadecimal,
+    IntegerDecimal,
     Float,
-    Str,
+    SingleQuotedStr,
+    DoubleQuotedStr,
 }

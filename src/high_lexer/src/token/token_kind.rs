@@ -49,15 +49,11 @@ pub enum TokenKind {
     // Unary operators
     BitNot, // "~"
     LogNot, // "!"
-    Literal(TokenLiteral),
     Id(StrIdx),
+    Literal(TokenLiteral),
 }
 
 impl TokenKind {
-    pub fn literal(literal: TokenLiteral) -> Self {
-        Self::Literal(literal)
-    }
-
     pub fn id<S: AsRef<str>>(id: S) -> Self {
         Self::Id(StrIdx::intern(id))
     }
