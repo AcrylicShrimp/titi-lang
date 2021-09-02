@@ -26,7 +26,7 @@ impl StrChunk {
         }
 
         let ptr = self.ptr;
-        unsafe { self.ptr.add(size) };
+        self.ptr = unsafe { self.ptr.add(size) };
         Some(ptr)
     }
 }
