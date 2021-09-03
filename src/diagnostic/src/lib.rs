@@ -10,6 +10,8 @@ pub use multi_span::*;
 use crate::global_instance::DIAGNOSTICS;
 #[cfg(feature = "global_instance")]
 use parking_lot::MutexGuard;
+
+#[derive(Debug, Clone, Hash)]
 pub struct Diagnostic {
     level: Level,
     message: String,
