@@ -1,9 +1,15 @@
+#[cfg(feature = "global_instance")]
+pub(crate) mod global_instance;
 mod level;
 mod multi_span;
 
 pub use level::*;
 pub use multi_span::*;
 
+#[cfg(feature = "global_instance")]
+use crate::global_instance::DIAGNOSTICS;
+#[cfg(feature = "global_instance")]
+use parking_lot::MutexGuard;
 pub struct Diagnostic {
     level: Level,
     message: String,
@@ -29,5 +35,15 @@ impl Diagnostic {
 
     pub fn span(&self) -> &MultiSpan {
         &self.span
+    }
+
+    #[cfg(feature = "global_instance")]
+    pub fn push_new(diagnostic: Diagnostic) {
+        DIAGNOSTICS.lock().push(diagnostic);
+    }
+
+    #[cfg(feature = "global_instance")]
+    pub fn diagnostics() -> MutexGuard<'static, Vec<Diagnostic>> {
+        DIAGNOSTICS.lock()
     }
 }

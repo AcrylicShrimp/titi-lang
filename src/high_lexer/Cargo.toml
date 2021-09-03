@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diagnostic = { path = "../diagnostic" }
+diagnostic = { path = "../diagnostic", features = ["global_instance"] }
 lazy_static = "1"
 low_lexer = { path = "../low_lexer" }
 parking_lot = "0.11"
