@@ -1,6 +1,7 @@
 mod symbols;
 mod token;
 
+pub use symbols::*;
 pub use token::*;
 
 use diagnostic::{Diagnostic, Level, MultiSpan};
