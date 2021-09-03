@@ -1,13 +1,13 @@
+use diagnostic::Diagnostic;
 use high_lexer::token_iter;
 use span::{Pos, Source, SourcePath, Span};
 
 fn main() {
     let source = r#"
     if a == 10 {
-        let test = 0f32;
+        let test = 0.0usize;
         test <<= 10;
         print("%s", a + 2usize);
-        test
     }
     "#;
     let source = Source::new(
@@ -20,5 +20,9 @@ fn main() {
 
     for token in iter {
         println!("{:?}", token);
+    }
+
+    for diagnostic in Diagnostic::diagnostics().iter() {
+        println!("{:?}", diagnostic);
     }
 }
