@@ -3,6 +3,7 @@ mod token;
 
 pub use token::*;
 
+use diagnostic::{Diagnostic, Level, MultiSpan};
 use low_lexer::{
     token_iter as low_token_iter, Token as LowToken,
     TokenIntegerLiteralKind as LowTokenIntegerLiteralKind, TokenKind as LowTokenKind,
@@ -76,6 +77,8 @@ macro_rules! literal {
 fn convert(token: LowToken, low: Pos, source: &Source) -> Option<Token> {
     let span = Span::new(low, low.offset(token.len() as _));
 
+    check_low_token(&token, span, source);
+
     Some(Token::new(
         match token.kind() {
             LowTokenKind::Unknown | LowTokenKind::Whitespace => {
@@ -144,4 +147,165 @@ fn convert(token: LowToken, low: Pos, source: &Source) -> Option<Token> {
         },
         span,
     ))
+}
+
+fn check_low_token(token: &LowToken, span: Span, source: &Source) {
+    match token.kind() {
+        LowTokenKind::Unknown => Diagnostic::push_new(Diagnostic::new(
+            Level::Error,
+            format!("unknown token '{}'", source.slice(span)),
+            MultiSpan::with_spans(vec![(
+                format!("'{}' is not allowed", source.slice(span)),
+                Some(span),
+            )]),
+        )),
+        LowTokenKind::Whitespace => {}
+        LowTokenKind::Comment => {}
+        LowTokenKind::OpenParen => {}
+        LowTokenKind::CloseParen => {}
+        LowTokenKind::OpenBrace => {}
+        LowTokenKind::CloseBrace => {}
+        LowTokenKind::OpenBracket => {}
+        LowTokenKind::CloseBracket => {}
+        LowTokenKind::Dot => {}
+        LowTokenKind::Comma => {}
+        LowTokenKind::Semicolon => {}
+        LowTokenKind::Eq => {}
+        LowTokenKind::Bang => {}
+        LowTokenKind::Lt => {}
+        LowTokenKind::Gt => {}
+        LowTokenKind::Plus => {}
+        LowTokenKind::Minus => {}
+        LowTokenKind::Star => {}
+        LowTokenKind::Slash => {}
+        LowTokenKind::Percent => {}
+        LowTokenKind::Or => {}
+        LowTokenKind::And => {}
+        LowTokenKind::Caret => {}
+        LowTokenKind::Tilde => {}
+        LowTokenKind::Id => {}
+        LowTokenKind::Literal(literal) => match literal {
+            LowTokenLiteralKind::Number(number) => {
+                if number.suffix_start() != token.len() {
+                    let suffix = &source.slice(span)[number.suffix_start()..];
+
+                    // TODO: Perform value overflow check.
+
+                    match number.kind() {
+                        LowTokenNumberLiteralKind::Integer(integer) => match suffix {
+                            suffix if is_integer_suffix(suffix) => {}
+                            suffix if is_float_suffix(suffix) => {
+                                if !integer.is_decimal() {
+                                    Diagnostic::push_new(Diagnostic::new(
+                                        Level::Error,
+                                        format!("invalid use of float suffix '{}'", suffix),
+                                        MultiSpan::with_spans(vec![
+                                            (
+                                                format!("float suffix '{}' is not allowed for non-decimal integer literals", suffix),
+                                                Some(Span::new(
+                                                    span.low().offset(number.suffix_start() as _),
+                                                    span.high(),
+                                                )),
+                                            ),
+                                            (format!("consider use integer suffix or remove it"), None),
+                                        ]),
+                                    ));
+                                }
+                            }
+                            suffix => {
+                                Diagnostic::push_new(Diagnostic::new(
+                                    Level::Error,
+                                    format!("invalid suffix '{}'", suffix),
+                                    MultiSpan::with_spans(vec![
+                                        (
+                                            format!("'{}' is not valid suffix", suffix),
+                                            Some(Span::new(
+                                                span.low().offset(number.suffix_start() as _),
+                                                span.high(),
+                                            )),
+                                        ),
+                                        (format!("consider use integer suffix or remove it"), None),
+                                    ]),
+                                ));
+                            }
+                        },
+                        LowTokenNumberLiteralKind::Float => match suffix {
+                            suffix if is_float_suffix(suffix) => {}
+                            suffix if is_integer_suffix(suffix) => {
+                                Diagnostic::push_new(Diagnostic::new(
+                                    Level::Error,
+                                    format!("invalid use of integer suffix '{}'", suffix),
+                                    MultiSpan::with_spans(vec![
+                                        (
+                                            format!("integer suffix '{}' is not allowed for float literals", suffix),
+                                            Some(Span::new(
+                                                span.low().offset(number.suffix_start() as _),
+                                                span.high(),
+                                            )),
+                                        ),
+                                        (format!("consider use 'f64' or remove it"), None),
+                                    ]),
+                                ));
+                            }
+                            suffix => {
+                                Diagnostic::push_new(Diagnostic::new(
+                                    Level::Error,
+                                    format!("invalid suffix '{}'", suffix),
+                                    MultiSpan::with_spans(vec![
+                                        (
+                                            format!("'{}' is not valid suffix", suffix),
+                                            Some(Span::new(
+                                                span.low().offset(number.suffix_start() as _),
+                                                span.high(),
+                                            )),
+                                        ),
+                                        (format!("consider use 'f64' or remove it"), None),
+                                    ]),
+                                ));
+                            }
+                        },
+                    }
+                }
+            }
+            LowTokenLiteralKind::SingleQuotedStr(str) => {
+                // TODO: Detect long-length literals and emit diagnostics for it.
+                if !str.terminated() {
+                    Diagnostic::push_new(Diagnostic::new(
+                        Level::Error,
+                        format!("single quoted literal is not closed"),
+                        MultiSpan::with_spans(vec![
+                            (format!("' is missing"), Some(span)),
+                            (format!("add ' at the end of the literal"), None),
+                        ]),
+                    ));
+                }
+            }
+            LowTokenLiteralKind::DoubleQuotedStr(str) => {
+                if !str.terminated() {
+                    Diagnostic::push_new(Diagnostic::new(
+                        Level::Error,
+                        format!("double quoted literal is not closed"),
+                        MultiSpan::with_spans(vec![
+                            (format!("\" is missing"), Some(span)),
+                            (format!("add \" at the end of the literal"), None),
+                        ]),
+                    ));
+                }
+            }
+        },
+    }
+}
+
+fn is_integer_suffix(suffix: &str) -> bool {
+    match suffix {
+        "byte" | "char" | "i64" | "u64" | "isize" | "usize" => true,
+        _ => false,
+    }
+}
+
+fn is_float_suffix(suffix: &str) -> bool {
+    match suffix {
+        "f64" => true,
+        _ => false,
+    }
 }
