@@ -1,5 +1,9 @@
-mod ast;
-mod top_level;
+use str_interner::StrIdx;
 
-pub use ast::*;
-pub use top_level::*;
+pub enum TopLevel {
+    Fn(Fn),
+}
+
+pub struct Fn {
+    pub name: StrIdx,
+}

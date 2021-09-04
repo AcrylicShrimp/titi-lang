@@ -1,5 +1,5 @@
 [package]
-name = "ast"
+name = "parser"
 version = "0.0.1"
 authors = ["AcrylicShrimp <led789zxpp@naver.com>"]
 edition = "2018"
@@ -7,5 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ast = { path = "../ast" }
+diagnostic = { path = "../diagnostic", features = ["global_instance"] }
+high_lexer = { path = "../high_lexer" }
 span = { path = "../span" }
 str_interner = { path = "../str_interner", features = ["global_instance"] }

@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "ast"
+version = "0.0.1"
+dependencies = [
+ "span",
+ "str_interner",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -99,6 +107,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser"
+version = "0.0.1"
+dependencies = [
+ "ast",
+ "diagnostic",
+ "high_lexer",
+ "span",
+ "str_interner",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -142,10 +161,11 @@ dependencies = [
 name = "titi-lang"
 version = "0.1.0"
 dependencies = [
+ "ast",
  "diagnostic",
  "high_lexer",
  "lazy_static",
- "low_lexer",
+ "parser",
  "span",
  "str_interner",
 ]
