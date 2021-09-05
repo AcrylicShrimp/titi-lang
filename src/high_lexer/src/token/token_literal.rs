@@ -1,5 +1,4 @@
 use crate::{Symbol, TokenLiteralKind};
-use str_interner::StrIdx;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TokenLiteral {

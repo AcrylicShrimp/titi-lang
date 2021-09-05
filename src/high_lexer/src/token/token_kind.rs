@@ -1,5 +1,4 @@
 use crate::{Symbol, TokenLiteral, STR_INTERNER};
-use str_interner::StrIdx;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenKind {

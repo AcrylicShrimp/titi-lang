@@ -1,5 +1,5 @@
 use crate::Cursor;
-use high_lexer::{Symbol, Token, TokenKind, TokenLiteral, TokenLiteralKind};
+use high_lexer::{Symbol, Token, TokenKind, TokenLiteral};
 
 pub struct Parser<T>
 where
