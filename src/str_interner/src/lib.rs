@@ -1,5 +1,3 @@
-#[cfg(feature = "global_instance")]
-pub(crate) mod global_instance;
 mod str_chunk;
 mod str_idx;
 
@@ -12,7 +10,7 @@ use std::ptr::copy_nonoverlapping;
 use std::slice::from_raw_parts;
 use std::str::from_utf8_unchecked;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct StrInterner {
     chunks: Vec<StrChunk>,
     strings: Vec<&'static str>,
@@ -21,10 +19,13 @@ pub struct StrInterner {
 
 impl StrInterner {
     pub fn with_prefilled(strs: &[&'static str]) -> Self {
+        let mut strings = vec![""];
+        strings.extend(strs.iter());
+
         Self {
             chunks: Vec::with_capacity(4),
-            strings: strs.into(),
-            reversed: strs.iter().copied().zip((0..).map(StrIdx::new)).collect(),
+            strings,
+            reversed: strs.iter().copied().zip((1..).map(StrIdx::new)).collect(),
         }
     }
 

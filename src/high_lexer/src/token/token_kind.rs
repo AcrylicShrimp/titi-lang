@@ -1,4 +1,4 @@
-use crate::TokenLiteral;
+use crate::{Symbol, TokenLiteral, STR_INTERNER};
 use str_interner::StrIdx;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,12 +49,62 @@ pub enum TokenKind {
     // Unary operators
     BitNot, // "~"
     LogNot, // "!"
-    Id(StrIdx),
+    Id(Symbol),
     Literal(TokenLiteral),
 }
 
 impl TokenKind {
     pub fn id<S: AsRef<str>>(id: S) -> Self {
-        Self::Id(StrIdx::intern(id))
+        Self::Id(Symbol(STR_INTERNER.lock().intern(id)))
+    }
+
+    // TODO: Make the output more readable
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Comment => "comment",
+            Self::OpenParen => "'('",
+            Self::CloseParen => "')'",
+            Self::OpenBrace => "'{'",
+            Self::CloseBrace => "'}'",
+            Self::OpenBracket => "'['",
+            Self::CloseBracket => "']'",
+            Self::Dot => "'.'",
+            Self::Comma => "','",
+            Self::Semicolon => "';'",
+            Self::Assign => "'='",
+            Self::AssignAdd => "'+='",
+            Self::AssignSub => "'-='",
+            Self::AssignMul => "'*='",
+            Self::AssignDiv => "'/='",
+            Self::AssignMod => "'%='",
+            Self::AssignShl => "'<<='",
+            Self::AssignShr => "'>>='",
+            Self::AssignBitOr => "'|='",
+            Self::AssignBitAnd => "'&='",
+            Self::AssignBitXor => "'^='",
+            Self::AssignBitNot => "'~='",
+            Self::Eq => "'=='",
+            Self::Ne => "'!='",
+            Self::Lt => "'<'",
+            Self::Gt => "'>'",
+            Self::Le => "'<='",
+            Self::Ge => "'>='",
+            Self::Add => "'+'",
+            Self::Sub => "'-'",
+            Self::Mul => "'*'",
+            Self::Div => "'/'",
+            Self::Mod => "'%'",
+            Self::Shl => "'<<'",
+            Self::Shr => "'>>'",
+            Self::BitOr => "'|'",
+            Self::BitAnd => "'&'",
+            Self::BitXor => "'^'",
+            Self::LogOr => "'||'",
+            Self::LogAnd => "'&&'",
+            Self::BitNot => "'~'",
+            Self::LogNot => "'!'",
+            Self::Id(..) => "identifier",
+            Self::Literal(..) => "literal",
+        }
     }
 }

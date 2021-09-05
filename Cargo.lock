@@ -6,6 +6,7 @@ version = 3
 name = "ast"
 version = "0.0.1"
 dependencies = [
+ "high_lexer",
  "span",
  "str_interner",
 ]
@@ -152,8 +153,6 @@ version = "0.0.1"
 name = "str_interner"
 version = "0.0.1"
 dependencies = [
- "lazy_static",
- "parking_lot",
  "rustc-hash",
 ]
 

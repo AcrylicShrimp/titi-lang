@@ -12,7 +12,6 @@ use low_lexer::{
 };
 use span::{Pos, Source, Span};
 use std::iter::from_fn as iter_from_fn;
-use str_interner::StrIdx;
 
 pub fn token_iter(source: &Source) -> impl Iterator<Item = Token> + '_ {
     let mut iter = unglued_token_iter(source);
@@ -66,11 +65,14 @@ fn unglued_token_iter(source: &Source) -> impl Iterator<Item = Token> + '_ {
 
 macro_rules! literal {
     ($kind:expr, $str:expr, $suffix:expr) => {
-        TokenKind::Literal(TokenLiteral::new(
-            $kind,
-            StrIdx::intern($str),
-            $suffix.map(|suffix: &str| StrIdx::intern(suffix)),
-        ))
+        TokenKind::Literal({
+            let str = { Symbol(STR_INTERNER.lock().intern($str)) };
+            TokenLiteral::new(
+                $kind,
+                str,
+                $suffix.map(|suffix: &str| Symbol(STR_INTERNER.lock().intern(suffix))),
+            )
+        })
     };
 }
 
@@ -82,10 +84,9 @@ fn convert(token: LowToken, low: Pos, source: &Source) -> Option<Token> {
 
     Some(Token::new(
         match token.kind() {
-            LowTokenKind::Unknown | LowTokenKind::Whitespace => {
+            LowTokenKind::Unknown | LowTokenKind::Whitespace | LowTokenKind::Comment => {
                 return None;
             }
-            LowTokenKind::Comment => TokenKind::Comment,
             LowTokenKind::OpenParen => TokenKind::OpenParen,
             LowTokenKind::CloseParen => TokenKind::CloseParen,
             LowTokenKind::OpenBrace => TokenKind::OpenBrace,

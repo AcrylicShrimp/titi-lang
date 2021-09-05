@@ -38,16 +38,10 @@ impl Token {
             },
             TokenKind::Add => match &next.kind {
                 TokenKind::Assign => TokenKind::AssignAdd,
-                TokenKind::Literal(literal) if literal.kind().is_number() => {
-                    TokenKind::Literal(literal.clone())
-                }
                 _ => return None,
             },
             TokenKind::Sub => match &next.kind {
                 TokenKind::Assign => TokenKind::AssignSub,
-                TokenKind::Literal(literal) if literal.kind().is_number() => {
-                    TokenKind::Literal(literal.clone())
-                }
                 _ => return None,
             },
             TokenKind::Mul => match next.kind {

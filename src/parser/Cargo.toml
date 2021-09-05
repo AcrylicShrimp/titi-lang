@@ -11,4 +11,4 @@ ast = { path = "../ast" }
 diagnostic = { path = "../diagnostic", features = ["global_instance"] }
 high_lexer = { path = "../high_lexer" }
 span = { path = "../span" }
-str_interner = { path = "../str_interner", features = ["global_instance"] }
+str_interner = { path = "../str_interner" }
