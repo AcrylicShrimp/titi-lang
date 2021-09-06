@@ -110,7 +110,7 @@ fn parse_fn(
     vis: Option<Vis>,
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<Fn, (String, Span)> {
-    let span = parser.span();
+    let span = vis.as_ref().map_or(parser.span(), |vis| vis.span);
     let name = if let Some(id) = parser.expect_id() {
         SymbolWithSpan {
             symbol: id,
