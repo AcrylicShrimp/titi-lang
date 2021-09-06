@@ -200,6 +200,7 @@ fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block
 
 fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, (String, Span)> {
     if parser.expect_keyword(FN) {
+        parser.expect_begin();
         let f = parse_fn(None, parser)?;
 
         Ok(Stmt {
