@@ -56,6 +56,7 @@ fn next(input: &str) -> Token {
         ']' => TokenKind::CloseBracket,
         '.' => TokenKind::Dot,
         ',' => TokenKind::Comma,
+        ':' => TokenKind::Colon,
         ';' => TokenKind::Semicolon,
         '=' => TokenKind::Eq,
         '!' => TokenKind::Bang,

@@ -95,6 +95,7 @@ fn convert(token: LowToken, low: Pos, source: &Source) -> Option<Token> {
             LowTokenKind::CloseBracket => TokenKind::CloseBracket,
             LowTokenKind::Dot => TokenKind::Dot,
             LowTokenKind::Comma => TokenKind::Comma,
+            LowTokenKind::Colon => TokenKind::Colon,
             LowTokenKind::Semicolon => TokenKind::Semicolon,
             LowTokenKind::Eq => TokenKind::Assign,
             LowTokenKind::Bang => TokenKind::LogNot,
@@ -171,6 +172,7 @@ fn check_low_token(token: &LowToken, span: Span, source: &Source) {
         LowTokenKind::CloseBracket => {}
         LowTokenKind::Dot => {}
         LowTokenKind::Comma => {}
+        LowTokenKind::Colon => {}
         LowTokenKind::Semicolon => {}
         LowTokenKind::Eq => {}
         LowTokenKind::Bang => {}

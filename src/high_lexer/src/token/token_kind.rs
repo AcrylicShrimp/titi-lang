@@ -11,6 +11,7 @@ pub enum TokenKind {
     CloseBracket, // "]"
     Dot,          // "."
     Comma,        // ","
+    Colon,        // ":"
     Semicolon,    // ";"
     // Assignment operators
     Assign,       // "="
@@ -72,6 +73,7 @@ impl TokenKind {
             Self::CloseBracket => "']'",
             Self::Dot => "'.'",
             Self::Comma => "','",
+            Self::Colon => "':'",
             Self::Semicolon => "';'",
             Self::Assign => "'='",
             Self::AssignAdd => "'+='",

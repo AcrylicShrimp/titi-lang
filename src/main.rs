@@ -75,6 +75,22 @@ fn test2(a str) cptr str {
         },
     }
 
+    return Test {
+        name: "hello",
+        age: 10,
+        private_field: 10,
+        inner_struct: {
+            name: "hello",
+            age: 10,
+            private_field: 10,
+            inner_struct: {
+                name: "hello",
+                age: 10,
+                private_field: 10,
+            },
+        },
+    };
+
     return "hello";
 }
 

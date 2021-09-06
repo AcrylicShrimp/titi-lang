@@ -197,8 +197,35 @@ pub enum ExprKind {
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Member(Box<Expr>, SymbolWithSpan),
+    Object(Object),
     Id(SymbolWithSpan),
     Literal(Literal),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Object {
+    pub name: SymbolWithSpan,
+    pub fields: Vec<ObjectField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct ObjectField {
+    pub name: SymbolWithSpan,
+    pub kind: ObjectFieldKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum ObjectFieldKind {
+    Expr(Expr),
+    InnerObject(InnerObject),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct InnerObject {
+    pub fields: Vec<ObjectField>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]

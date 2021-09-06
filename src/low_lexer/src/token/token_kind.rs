@@ -13,6 +13,7 @@ pub enum TokenKind {
     CloseBracket, // "]"
     Dot,          // "."
     Comma,        // ","
+    Colon,        // ":"
     Semicolon,    // ";"
     Eq,           // "="
     Bang,         // "!"

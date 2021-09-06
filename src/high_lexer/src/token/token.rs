@@ -102,6 +102,7 @@ impl Token {
             | TokenKind::OpenBracket
             | TokenKind::CloseBracket
             | TokenKind::Comma
+            | TokenKind::Colon
             | TokenKind::Semicolon
             | TokenKind::AssignAdd
             | TokenKind::AssignSub
