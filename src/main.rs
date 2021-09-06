@@ -24,6 +24,12 @@ pub fn test1(a cptr str, b isize) f64 {
     b != c;
     123 + 10;
     a = a + b / 10 % call(a, b, c[123 + 10 % 1231isize]) && a == 10isize;
+
+    fn inner_fn(a isize, b isize) isize {
+        return a + b;
+    }
+
+    inner_fn(1, 2);
 }
 
 fn test2(a str) cptr str {
