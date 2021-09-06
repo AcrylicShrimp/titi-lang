@@ -45,6 +45,38 @@ pub fn test1(a cptr str, b isize) f64 {
 fn test2(a str) cptr str {
     return "hello";
 }
+
+pub struct Test {
+    pub name cptr str,
+    pub age usize,
+    private_field isize,
+    inner_struct struct {
+        pub name cptr str,
+        pub age usize,
+        private_field isize,
+        inner_struct struct {
+            pub name cptr str,
+            pub age usize,
+            private_field isize,
+        },
+    },
+}
+
+struct Test {
+    pub name cptr str,
+    pub age usize,
+    private_field isize,
+    inner_struct struct {
+        pub name cptr str,
+        pub age usize,
+        private_field isize,
+        inner_struct struct {
+            pub name cptr str,
+            pub age usize,
+            private_field isize,
+        },
+    },
+}
     "#;
     let source = Source::new(
         Span::new(Pos::new(0), Pos::new(source.len() as _)),

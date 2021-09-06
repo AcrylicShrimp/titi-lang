@@ -22,7 +22,14 @@ pub fn parse_toplevel(
         };
 
         parser.expect_begin();
-        if parser.expect_keyword(FN) {
+        if parser.expect_keyword(STRUCT) {
+            parser.expect_begin();
+            let s = parse_struct(Some(vis), parser)?;
+            Ok(TopLevel {
+                span: vis.span.to(s.span),
+                kind: TopLevelKind::Struct(s),
+            })
+        } else if parser.expect_keyword(FN) {
             parser.expect_begin();
             let f = parse_fn(Some(vis), parser)?;
             Ok(TopLevel {
@@ -32,6 +39,13 @@ pub fn parse_toplevel(
         } else {
             Err(parser.expect_else())
         }
+    } else if parser.expect_keyword(STRUCT) {
+        parser.expect_begin();
+        let s = parse_struct(None, parser)?;
+        Ok(TopLevel {
+            span: s.span,
+            kind: TopLevelKind::Struct(s),
+        })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();
         let f = parse_fn(None, parser)?;
@@ -103,6 +117,96 @@ fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (Str
         });
     } else {
         return Err(parser.expect_else());
+    })
+}
+
+fn parse_struct(
+    vis: Option<Vis>,
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<Struct, (String, Span)> {
+    let span = vis.as_ref().map_or(parser.span(), |vis| vis.span);
+    let name = if let Some(id) = parser.expect_id() {
+        SymbolWithSpan {
+            symbol: id,
+            span: parser.span(),
+        }
+    } else {
+        return Err(parser.expect_else());
+    };
+    let inner_struct = parse_inner_struct(parser)?;
+
+    Ok(Struct {
+        vis,
+        name,
+        fields: inner_struct.fields,
+        span: span.to(inner_struct.span),
+    })
+}
+
+fn parse_inner_struct(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<InnerStruct, (String, Span)> {
+    let span = parser.span();
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::OpenBrace) {
+        return Err(parser.expect_else());
+    }
+
+    let mut fields = vec![];
+
+    while !parser.expect_kind(TokenKind::CloseBrace) {
+        if !parser.exists() {
+            return Err(parser.expect_else());
+        }
+
+        parser.expect_begin();
+        let vis = if parser.expect_keyword(PUB) {
+            Some(Vis {
+                kind: VisKind::Pub,
+                span: parser.span(),
+            })
+        } else {
+            None
+        };
+
+        let name = if let Some(id) = parser.expect_id() {
+            SymbolWithSpan {
+                symbol: id,
+                span: parser.span(),
+            }
+        } else {
+            return Err(parser.expect_else());
+        };
+
+        let kind;
+        let kind_span;
+
+        parser.expect_begin();
+        if parser.expect_keyword(STRUCT) {
+            let inner_struct = parse_inner_struct(parser)?;
+            kind_span = inner_struct.span;
+            kind = StructFieldKind::Struct(inner_struct);
+        } else {
+            let ty = parse_ty(parser)?;
+            kind_span = ty.span;
+            kind = StructFieldKind::Plain(ty);
+        }
+
+        fields.push(StructField {
+            span: vis.as_ref().map_or(name.span, |vis| vis.span).to(kind_span),
+            vis,
+            name,
+            kind,
+        });
+
+        parser.expect_begin();
+        parser.expect_kind(TokenKind::Comma);
+    }
+
+    Ok(InnerStruct {
+        fields,
+        span: span.to(parser.span()),
     })
 }
 
@@ -244,7 +348,15 @@ fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block
 }
 
 fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, (String, Span)> {
-    if parser.expect_keyword(FN) {
+    if parser.expect_keyword(STRUCT) {
+        parser.expect_begin();
+        let s = parse_struct(None, parser)?;
+
+        Ok(Stmt {
+            span: s.span,
+            kind: StmtKind::Struct(s),
+        })
+    } else if parser.expect_keyword(FN) {
         parser.expect_begin();
         let f = parse_fn(None, parser)?;
 

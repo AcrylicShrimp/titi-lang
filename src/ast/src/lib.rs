@@ -9,6 +9,7 @@ pub struct TopLevel {
 
 #[derive(Debug, Clone, Hash)]
 pub enum TopLevelKind {
+    Struct(Struct),
     Fn(Fn),
 }
 
@@ -51,6 +52,34 @@ pub enum TyKind {
 }
 
 #[derive(Debug, Clone, Hash)]
+pub struct Struct {
+    pub vis: Option<Vis>,
+    pub name: SymbolWithSpan,
+    pub fields: Vec<StructField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct StructField {
+    pub vis: Option<Vis>,
+    pub name: SymbolWithSpan,
+    pub kind: StructFieldKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum StructFieldKind {
+    Plain(Ty),
+    Struct(InnerStruct),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct InnerStruct {
+    pub fields: Vec<StructField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
 pub struct Fn {
     pub vis: Option<Vis>,
     pub name: SymbolWithSpan,
@@ -81,6 +110,7 @@ pub struct Stmt {
 
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
+    Struct(Struct),
     Fn(Fn),
     If(If),
     Block(Block),
