@@ -37,10 +37,19 @@ fn test2(a str) cptr str {
 
     while parser.exists() {
         println!(
-            "{:#?}",
+            "{:?}",
             match parse_toplevel(&mut parser) {
                 Ok(t) => t,
-                Err(e) => panic!("{:?}", e),
+                Err(e) => {
+                    let line_col = source.find_line_col(e.1.low());
+
+                    panic!(
+                        "{:?} [where: {:?}] [source: {}]",
+                        e.0,
+                        line_col,
+                        source.slice_line(line_col.line())
+                    );
+                }
             }
         );
     }
