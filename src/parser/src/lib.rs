@@ -283,6 +283,53 @@ fn parse_fn(
     });
 }
 
+fn parse_let(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Let, (String, Span)> {
+    let span = parser.span();
+    let name = if let Some(id) = parser.expect_id() {
+        SymbolWithSpan {
+            symbol: id,
+            span: parser.span(),
+        }
+    } else {
+        return Err(parser.expect_else());
+    };
+
+    let kind;
+    let kind_span;
+
+    parser.expect_begin();
+    if parser.expect_kind(TokenKind::Assign) {
+        let expr = parse_expr(parser, true)?;
+
+        kind_span = expr.span;
+        kind = LetKind::Expr(expr);
+    } else {
+        let ty = parse_ty(parser)?;
+
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::Assign) {
+            let expr = parse_expr(parser, true)?;
+
+            kind_span = expr.span;
+            kind = LetKind::TyExpr(ty, expr);
+        } else {
+            kind_span = ty.span;
+            kind = LetKind::Ty(ty);
+        }
+    }
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::Semicolon) {
+        return Err(parser.expect_else());
+    }
+
+    Ok(Let {
+        span: span.to(kind_span),
+        name,
+        kind,
+    })
+}
+
 fn parse_if(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<If, (String, Span)> {
     let span = parser.span();
     let cond = parse_expr(parser, false)?;
@@ -355,6 +402,14 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         Ok(Stmt {
             span: s.span,
             kind: StmtKind::Struct(s),
+        })
+    } else if parser.expect_keyword(LET) {
+        parser.expect_begin();
+        let l = parse_let(parser)?;
+
+        Ok(Stmt {
+            span: l.span,
+            kind: StmtKind::Let(l),
         })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();

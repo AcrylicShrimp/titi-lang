@@ -111,6 +111,7 @@ pub struct Stmt {
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
     Struct(Struct),
+    Let(Let),
     Fn(Fn),
     If(If),
     Block(Block),
@@ -118,6 +119,20 @@ pub enum StmtKind {
     Continue(Continue),
     Return(Return),
     Expr(Expr),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Let {
+    pub name: SymbolWithSpan,
+    pub kind: LetKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum LetKind {
+    Ty(Ty),
+    Expr(Expr),
+    TyExpr(Ty, Expr),
 }
 
 #[derive(Debug, Clone, Hash)]

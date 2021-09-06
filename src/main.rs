@@ -6,6 +6,9 @@ use span::{Pos, Source, SourcePath, Span};
 fn main() {
     let source = r#"
 pub fn test1(a cptr str, b isize) f64 {
+    let test isize;
+    let test = value;
+    let test isize = value;
     (a.b.c.fdasfdsfdsa.f34242423423423[redsafasdfas >> 123 as f64] as f64).dsaf;
     a..10;
     abtest[a..=10 + 215 / 1231 >> 23];

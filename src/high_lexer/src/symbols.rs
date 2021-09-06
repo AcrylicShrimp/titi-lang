@@ -64,12 +64,13 @@ pub const IF: Symbol = Symbol::from_idx_const(18);
 pub const ELSE: Symbol = Symbol::from_idx_const(19);
 pub const FOR: Symbol = Symbol::from_idx_const(20);
 pub const IN: Symbol = Symbol::from_idx_const(21);
-pub const STRUCT: Symbol = Symbol::from_idx_const(22);
+pub const LET: Symbol = Symbol::from_idx_const(22);
+pub const STRUCT: Symbol = Symbol::from_idx_const(23);
 
 lazy_static! {
     pub(crate) static ref STR_INTERNER: Mutex<StrInterner> = StrInterner::with_prefilled(&[
         "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "cptr", "mptr", "as",
-        "pub", "fn", "break", "continue", "return", "if", "else", "for", "in", "struct"
+        "pub", "fn", "break", "continue", "return", "if", "else", "for", "in", "let", "struct"
     ])
     .into();
 }
