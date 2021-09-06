@@ -114,6 +114,7 @@ pub enum StmtKind {
     Let(Let),
     Fn(Fn),
     If(If),
+    For(For),
     Block(Block),
     Break(Break),
     Continue(Continue),
@@ -147,6 +148,20 @@ pub struct If {
 pub enum ElseKind {
     Else(Block),
     ElseIf(If),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct For {
+    pub kind: ForKind,
+    pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum ForKind {
+    Loop,
+    While(Expr),
+    ForIn(SymbolWithSpan, Expr),
 }
 
 #[derive(Debug, Clone, Hash)]

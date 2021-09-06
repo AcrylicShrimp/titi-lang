@@ -119,4 +119,8 @@ where
         self.expects.clear();
         (err, self.span)
     }
+
+    pub fn consume(&mut self) {
+        self.cursor.consume();
+    }
 }

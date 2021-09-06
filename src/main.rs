@@ -6,6 +6,40 @@ use span::{Pos, Source, SourcePath, Span};
 fn main() {
     let source = r#"
 pub fn test1(a cptr str, b isize) f64 {
+    for {
+        let a = 1;
+        let b = 2;
+        let c = 3;
+    }
+
+    for a != 10 {
+        a += 1;
+    }
+
+    for i in 0..10000 {
+        if i % 2 == 0 {
+            continue;
+        }
+
+        if i % 3 == 0 {
+            break;
+        }
+
+        if i % 5 == 0 {
+            continue;
+        }
+
+        if i % 7 == 0 {
+            break;
+        }
+
+        if i % 11 == 0 {
+            continue;
+        }
+
+        println("{}", i);
+    }
+
     let test isize;
     let test = value;
     let test isize = value;

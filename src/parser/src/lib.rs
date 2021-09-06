@@ -375,6 +375,69 @@ fn parse_if(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<If, (Str
     })
 }
 
+fn parse_for(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<For, (String, Span)> {
+    let span = parser.span();
+
+    if let Some(first) = parser.cursor().first() {
+        if let TokenKind::Id(id) = first.kind() {
+            if let Some(second) = parser.cursor().second() {
+                if let TokenKind::Id(keyword) = second.kind() {
+                    if *keyword == IN {
+                        let name = SymbolWithSpan {
+                            symbol: *id,
+                            span: first.span(),
+                        };
+
+                        parser.consume();
+                        parser.consume();
+
+                        let expr = parse_expr(parser, false)?;
+
+                        parser.expect_begin();
+                        if !parser.expect_kind(TokenKind::OpenBrace) {
+                            return Err(parser.expect_else());
+                        }
+
+                        let body = parse_block(parser)?;
+
+                        return Ok(For {
+                            span: span.to(body.span),
+                            kind: ForKind::ForIn(name, expr),
+                            body,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    parser.expect_begin();
+    if parser.expect_kind(TokenKind::OpenBrace) {
+        let body = parse_block(parser)?;
+
+        Ok(For {
+            span: span.to(body.span),
+            kind: ForKind::Loop,
+            body,
+        })
+    } else {
+        let expr = parse_expr(parser, false)?;
+
+        parser.expect_begin();
+        if !parser.expect_kind(TokenKind::OpenBrace) {
+            return Err(parser.expect_else());
+        }
+
+        let body = parse_block(parser)?;
+
+        Ok(For {
+            span: span.to(body.span),
+            kind: ForKind::While(expr),
+            body,
+        })
+    }
+}
+
 fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block, (String, Span)> {
     let span = parser.span();
     let mut stmts = vec![];
@@ -426,6 +489,14 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         Ok(Stmt {
             span: r#if.span,
             kind: StmtKind::If(r#if),
+        })
+    } else if parser.expect_keyword(FOR) {
+        parser.expect_begin();
+        let r#for = parse_for(parser)?;
+
+        Ok(Stmt {
+            span: r#for.span,
+            kind: StmtKind::For(r#for),
         })
     } else if parser.expect_kind(TokenKind::OpenBrace) {
         parser.expect_begin();
