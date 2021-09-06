@@ -26,6 +26,13 @@ pub fn test1(a cptr str, b isize) f64 {
     a = a + b / 10 % call(a, b, c[123 + 10 % 1231isize]) && a == 10isize;
 
     fn inner_fn(a isize, b isize) isize {
+        if a == b {
+            return 10;
+        } else if a != b {
+            println("a and b is not eq! a:{}, b:{}", a, b);
+        } else {
+            println("hello");
+        }
         return a + b;
     }
 

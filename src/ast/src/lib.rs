@@ -82,11 +82,26 @@ pub struct Stmt {
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
     Fn(Fn),
+    If(If),
     Block(Block),
     Break(Break),
     Continue(Continue),
     Return(Return),
     Expr(Expr),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct If {
+    pub cond: Expr,
+    pub then_body: Block,
+    pub else_kind: Option<Box<ElseKind>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum ElseKind {
+    Else(Block),
+    ElseIf(If),
 }
 
 #[derive(Debug, Clone, Hash)]

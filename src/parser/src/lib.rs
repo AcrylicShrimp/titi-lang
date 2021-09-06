@@ -179,6 +179,51 @@ fn parse_fn(
     });
 }
 
+fn parse_if(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<If, (String, Span)> {
+    let span = parser.span();
+    let cond = parse_expr(parser)?;
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::OpenBrace) {
+        return Err(parser.expect_else());
+    }
+
+    let then_body = parse_block(parser)?;
+
+    parser.expect_begin();
+    Ok(if parser.expect_keyword(ELSE) {
+        parser.expect_begin();
+        if parser.expect_keyword(IF) {
+            let else_body = parse_if(parser)?;
+
+            If {
+                span: span.to(else_body.span),
+                cond,
+                then_body,
+                else_kind: Some(Box::new(ElseKind::ElseIf(else_body))),
+            }
+        } else if parser.expect_kind(TokenKind::OpenBrace) {
+            let else_body = parse_block(parser)?;
+
+            If {
+                span: span.to(else_body.span),
+                cond,
+                then_body,
+                else_kind: Some(Box::new(ElseKind::Else(else_body))),
+            }
+        } else {
+            return Err(parser.expect_else());
+        }
+    } else {
+        If {
+            span: span.to(then_body.span),
+            cond,
+            then_body,
+            else_kind: None,
+        }
+    })
+}
+
 fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block, (String, Span)> {
     let span = parser.span();
     let mut stmts = vec![];
@@ -207,7 +252,16 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
             span: f.span,
             kind: StmtKind::Fn(f),
         })
+    } else if parser.expect_keyword(IF) {
+        parser.expect_begin();
+        let r#if = parse_if(parser)?;
+
+        Ok(Stmt {
+            span: r#if.span,
+            kind: StmtKind::If(r#if),
+        })
     } else if parser.expect_kind(TokenKind::OpenBrace) {
+        parser.expect_begin();
         let block = parse_block(parser)?;
 
         Ok(Stmt {
