@@ -43,6 +43,38 @@ pub fn test1(a cptr str, b isize) f64 {
 }
 
 fn test2(a str) cptr str {
+    struct Test {
+        pub name cptr str,
+        pub age usize,
+        private_field isize,
+        inner_struct struct {
+            pub name cptr str,
+            pub age usize,
+            private_field isize,
+            inner_struct struct {
+                pub name cptr str,
+                pub age usize,
+                private_field isize,
+            },
+        },
+    }
+
+    struct Test {
+        pub name cptr str,
+        pub age usize,
+        private_field isize,
+        inner_struct struct {
+            pub name cptr str,
+            pub age usize,
+            private_field isize,
+            inner_struct struct {
+                pub name cptr str,
+                pub age usize,
+                private_field isize,
+            },
+        },
+    }
+
     return "hello";
 }
 
