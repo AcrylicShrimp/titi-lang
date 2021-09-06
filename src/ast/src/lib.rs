@@ -81,6 +81,7 @@ pub struct Stmt {
 
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
+    Block(Block),
     Break(Break),
     Continue(Continue),
     Return(Return),

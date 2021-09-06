@@ -8,6 +8,9 @@ fn main() {
 pub fn test1(a cptr str, b isize) f64 {
     break; cotinue;
     +++++a;
+    {
+        return 10;
+    }
     123;
     ta;
     ta[321];

@@ -199,7 +199,14 @@ fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block
 }
 
 fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, (String, Span)> {
-    if parser.expect_keyword(BREAK) {
+    if parser.expect_kind(TokenKind::OpenBrace) {
+        let block = parse_block(parser)?;
+
+        Ok(Stmt {
+            span: block.span,
+            kind: StmtKind::Block(block),
+        })
+    } else if parser.expect_keyword(BREAK) {
         let span = parser.span();
 
         parser.expect_begin();
