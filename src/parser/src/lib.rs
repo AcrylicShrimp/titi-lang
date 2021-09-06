@@ -459,45 +459,72 @@ fn parse_expr_binary_log_and(
 fn parse_expr_binary_cmp(
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<Expr, (String, Span)> {
-    let mut item = parse_expr_binary_shift(parser)?;
+    let mut item = parse_expr_binary_rng(parser)?;
 
     while parser.exists() {
         parser.expect_begin();
         if parser.expect_kind(TokenKind::Eq) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Eq(Box::new(item), Box::new(rhs)),
             }
         } else if parser.expect_kind(TokenKind::Ne) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Ne(Box::new(item), Box::new(rhs)),
             }
         } else if parser.expect_kind(TokenKind::Lt) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Lt(Box::new(item), Box::new(rhs)),
             }
         } else if parser.expect_kind(TokenKind::Gt) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Gt(Box::new(item), Box::new(rhs)),
             }
         } else if parser.expect_kind(TokenKind::Le) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Le(Box::new(item), Box::new(rhs)),
             }
         } else if parser.expect_kind(TokenKind::Ge) {
-            let rhs = parse_expr_binary_shift(parser)?;
+            let rhs = parse_expr_binary_rng(parser)?;
             item = Expr {
                 span: item.span.to(rhs.span),
                 kind: ExprKind::Ge(Box::new(item), Box::new(rhs)),
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok(item)
+}
+
+fn parse_expr_binary_rng(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<Expr, (String, Span)> {
+    let mut item = parse_expr_binary_shift(parser)?;
+
+    while parser.exists() {
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::Rng) {
+            let rhs = parse_expr_binary_shift(parser)?;
+            item = Expr {
+                span: item.span.to(rhs.span),
+                kind: ExprKind::Rng(Box::new(item), Box::new(rhs)),
+            }
+        } else if parser.expect_kind(TokenKind::RngInclusive) {
+            let rhs = parse_expr_binary_shift(parser)?;
+            item = Expr {
+                span: item.span.to(rhs.span),
+                kind: ExprKind::RngInclusive(Box::new(item), Box::new(rhs)),
             }
         } else {
             break;

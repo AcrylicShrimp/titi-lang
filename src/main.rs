@@ -6,6 +6,8 @@ use span::{Pos, Source, SourcePath, Span};
 fn main() {
     let source = r#"
 pub fn test1(a cptr str, b isize) f64 {
+    a..10;
+    abtest[a..=10 + 215 / 1231 >> 23];
     break; cotinue;
     +++++a;
     {

@@ -25,6 +25,9 @@ pub enum TokenKind {
     AssignBitAnd, // "&="
     AssignBitXor, // "^="
     AssignBitNot, // "~="
+    // Range operators
+    Rng,          // ".."
+    RngInclusive, // "..="
     // Cmp operators
     Eq, // "=="
     Ne, // "!="
@@ -82,6 +85,8 @@ impl TokenKind {
             Self::AssignBitAnd => "'&='",
             Self::AssignBitXor => "'^='",
             Self::AssignBitNot => "'~='",
+            Self::Rng => "'..'",
+            Self::RngInclusive => "'..='",
             Self::Eq => "'=='",
             Self::Ne => "'!='",
             Self::Lt => "'<'",

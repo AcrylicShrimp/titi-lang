@@ -140,6 +140,8 @@ pub enum ExprKind {
     AssignBitAnd(Box<Expr>, Box<Expr>),
     AssignBitXor(Box<Expr>, Box<Expr>),
     AssignBitNot(Box<Expr>, Box<Expr>),
+    Rng(Box<Expr>, Box<Expr>),
+    RngInclusive(Box<Expr>, Box<Expr>),
     Eq(Box<Expr>, Box<Expr>),
     Ne(Box<Expr>, Box<Expr>),
     Lt(Box<Expr>, Box<Expr>),
