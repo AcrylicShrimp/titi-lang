@@ -1,20 +1,42 @@
 use high_lexer::{Symbol, TokenLiteral};
-
-// TODO: Add spans to the AST to represent the source code location of each node.
+use span::Span;
 
 #[derive(Debug, Clone, Hash)]
-pub enum TopLevel {
+pub struct TopLevel {
+    pub kind: TopLevelKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum TopLevelKind {
     Fn(Fn),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Vis {
+pub struct SymbolWithSpan {
+    pub symbol: Symbol,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Vis {
+    pub kind: VisKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VisKind {
     Pub,
-    None,
 }
 
 #[derive(Debug, Clone, Hash)]
-pub enum Ty {
+pub struct Ty {
+    pub kind: TyKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum TyKind {
     Bool,
     Byte,
     Char,
@@ -30,31 +52,65 @@ pub enum Ty {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Fn {
-    pub vis: Vis,
-    pub name: Symbol,
+    pub vis: Option<Vis>,
+    pub name: SymbolWithSpan,
     pub params: Vec<FnParam>,
     pub return_ty: Option<Ty>,
     pub body: Block,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct FnParam {
-    pub name: Symbol,
+    pub name: SymbolWithSpan,
     pub ty: Ty,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]
-pub enum Stmt {
+pub struct Stmt {
+    pub kind: StmtKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum StmtKind {
+    Break(Break),
+    Continue(Continue),
+    Return(Return),
     Expr(Expr),
 }
 
 #[derive(Debug, Clone, Hash)]
-pub enum Expr {
+pub struct Break {
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Continue {
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Return {
+    pub expr: Option<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Expr {
+    pub kind: ExprKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum ExprKind {
     Assign(Box<Expr>, Box<Expr>),
     AssignAdd(Box<Expr>, Box<Expr>),
     AssignSub(Box<Expr>, Box<Expr>),
@@ -91,6 +147,12 @@ pub enum Expr {
     Cast(Box<Expr>, Ty),
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
-    Id(Symbol),
-    Literal(TokenLiteral),
+    Id(SymbolWithSpan),
+    Literal(Literal),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Literal {
+    pub lit: TokenLiteral,
+    pub span: Span,
 }

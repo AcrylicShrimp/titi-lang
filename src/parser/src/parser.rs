@@ -1,5 +1,8 @@
 use crate::Cursor;
 use high_lexer::{Symbol, Token, TokenKind, TokenLiteral};
+use span::{Pos, Span};
+
+// TODO: Make the expects a bit more readable and informative.
 
 pub struct Parser<T>
 where
@@ -7,6 +10,7 @@ where
 {
     cursor: Cursor<T>,
     expects: Vec<String>,
+    span: Span,
 }
 
 impl<T> Parser<T>
@@ -17,11 +21,16 @@ where
         Self {
             cursor,
             expects: vec![],
+            span: Span::new(Pos::new(0), Pos::new(0)),
         }
     }
 
     pub fn cursor(&self) -> &Cursor<T> {
         &self.cursor
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
     }
 
     pub fn exists(&self) -> bool {
@@ -36,6 +45,7 @@ where
         self.expects.push(kind.to_str().to_owned());
 
         if self.cursor.is_kind(kind) {
+            self.span = self.cursor.first().as_ref().unwrap().span();
             self.cursor.consume();
             return true;
         }
@@ -47,6 +57,7 @@ where
         self.expects.push("identifier".to_owned());
 
         if let Some(id) = self.cursor.id() {
+            self.span = self.cursor.first().as_ref().unwrap().span();
             self.cursor.consume();
             return Some(id);
         }
@@ -59,6 +70,7 @@ where
 
         if let Some(id) = self.cursor.id() {
             if id == keyword {
+                self.span = self.cursor.first().as_ref().unwrap().span();
                 self.cursor.consume();
                 return true;
             }
@@ -71,6 +83,7 @@ where
         self.expects.push("literal".to_owned());
 
         if let Some(literal) = self.cursor.literal().cloned() {
+            self.span = self.cursor.first().as_ref().unwrap().span();
             self.cursor.consume();
             return Some(literal);
         }
@@ -78,7 +91,7 @@ where
         None
     }
 
-    pub fn expect_else(&mut self) -> String {
+    pub fn expect_else(&mut self) -> (String, Span) {
         let err = if let Some(token) = self.cursor.first() {
             if self.expects.len() == 1 {
                 format!(
@@ -104,6 +117,6 @@ where
             }
         };
         self.expects.clear();
-        err
+        (err, self.span)
     }
 }

@@ -54,20 +54,22 @@ pub const F64: Symbol = Symbol::from_idx_const(8);
 pub const STR: Symbol = Symbol::from_idx_const(9);
 pub const CPTR: Symbol = Symbol::from_idx_const(10);
 pub const MPTR: Symbol = Symbol::from_idx_const(11);
-pub const IF: Symbol = Symbol::from_idx_const(12);
-pub const ELSE: Symbol = Symbol::from_idx_const(13);
-pub const FOR: Symbol = Symbol::from_idx_const(14);
-pub const IN: Symbol = Symbol::from_idx_const(15);
-pub const AS: Symbol = Symbol::from_idx_const(16);
-pub const FN: Symbol = Symbol::from_idx_const(17);
-pub const STRUCT: Symbol = Symbol::from_idx_const(18);
-pub const PUB: Symbol = Symbol::from_idx_const(19);
-pub const MOD: Symbol = Symbol::from_idx_const(20);
+pub const AS: Symbol = Symbol::from_idx_const(12);
+pub const PUB: Symbol = Symbol::from_idx_const(13);
+pub const FN: Symbol = Symbol::from_idx_const(14);
+pub const BREAK: Symbol = Symbol::from_idx_const(15);
+pub const CONTINUE: Symbol = Symbol::from_idx_const(16);
+pub const RETURN: Symbol = Symbol::from_idx_const(17);
+pub const IF: Symbol = Symbol::from_idx_const(18);
+pub const ELSE: Symbol = Symbol::from_idx_const(19);
+pub const FOR: Symbol = Symbol::from_idx_const(20);
+pub const IN: Symbol = Symbol::from_idx_const(21);
+pub const STRUCT: Symbol = Symbol::from_idx_const(22);
 
 lazy_static! {
     pub(crate) static ref STR_INTERNER: Mutex<StrInterner> = StrInterner::with_prefilled(&[
-        "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "cptr", "mptr", "if",
-        "else", "for", "in", "as", "fn", "struct", "pub", "mod"
+        "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "cptr", "mptr", "as",
+        "pub", "fn", "break", "continue", "return", "if", "else", "for", "in", "struct"
     ])
     .into();
 }

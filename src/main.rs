@@ -5,8 +5,8 @@ use span::{Pos, Source, SourcePath, Span};
 
 fn main() {
     let source = r#"
-
 pub fn test1(a cptr str, b isize) f64 {
+    break; cotinue;
     +++++a;
     123;
     ta;
@@ -23,10 +23,9 @@ pub fn test1(a cptr str, b isize) f64 {
     a = a + b / 10 % call(a, b, c[123 + 10 % 1231isize]) && a == 10isize;
 }
 
-fn test2() cptr str {
-    "hello";
+fn test2(a str) cptr str {
+    return "hello";
 }
-
     "#;
     let source = Source::new(
         Span::new(Pos::new(0), Pos::new(source.len() as _)),
