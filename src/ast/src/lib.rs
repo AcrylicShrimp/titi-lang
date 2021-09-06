@@ -166,6 +166,7 @@ pub enum ExprKind {
     Cast(Box<Expr>, Ty),
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
+    Member(Box<Expr>, SymbolWithSpan),
     Id(SymbolWithSpan),
     Literal(Literal),
 }

@@ -734,7 +734,7 @@ fn parse_expr_unary(
             kind: ExprKind::BitNot(Box::new(expr)),
         })
     } else {
-        let mut item = parse_expr_item(parser)?;
+        let mut item = parse_expr_member(parser)?;
 
         while parser.exists() {
             parser.expect_begin();
@@ -775,6 +775,37 @@ fn parse_expr_unary(
 
         Ok(item)
     }
+}
+
+fn parse_expr_member(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<Expr, (String, Span)> {
+    let mut item = parse_expr_item(parser)?;
+
+    while parser.exists() {
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::Dot) {
+            parser.expect_begin();
+            if let Some(id) = parser.expect_id() {
+                item = Expr {
+                    span: item.span.to(parser.span()),
+                    kind: ExprKind::Member(
+                        Box::new(item),
+                        SymbolWithSpan {
+                            symbol: id,
+                            span: parser.span(),
+                        },
+                    ),
+                }
+            } else {
+                return Err(parser.expect_else());
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok(item)
 }
 
 fn parse_expr_item(
