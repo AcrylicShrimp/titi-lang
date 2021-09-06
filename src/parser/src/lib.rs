@@ -685,7 +685,7 @@ fn parse_expr_binary_bit_xor(
 }
 
 fn parse_expr_as(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Expr, (String, Span)> {
-    let mut item = parse_expr_unary(parser)?;
+    let mut item = parse_expr_unary_and_single(parser)?;
 
     while parser.exists() {
         parser.expect_begin();
@@ -703,25 +703,25 @@ fn parse_expr_as(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Exp
     Ok(item)
 }
 
-fn parse_expr_unary(
+fn parse_expr_unary_and_single(
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<Expr, (String, Span)> {
     if parser.expect_kind(TokenKind::LogNot) {
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary(parser).map(|expr| Expr {
+        parse_expr_unary_and_single(parser).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::LogNot(Box::new(expr)),
         })
     } else if parser.expect_kind(TokenKind::Add) {
         parser.expect_begin();
-        parse_expr_unary(parser)
+        parse_expr_unary_and_single(parser)
     } else if parser.expect_kind(TokenKind::Sub) {
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary(parser).map(|expr| Expr {
+        parse_expr_unary_and_single(parser).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::Neg(Box::new(expr)),
         })
@@ -729,7 +729,7 @@ fn parse_expr_unary(
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary(parser).map(|expr| Expr {
+        parse_expr_unary_and_single(parser).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::BitNot(Box::new(expr)),
         })
