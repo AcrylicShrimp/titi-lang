@@ -1006,7 +1006,7 @@ fn parse_expr_as(
     parser: &mut Parser<impl Iterator<Item = Token>>,
     allow_object_literal: bool,
 ) -> Result<Expr, (String, Span)> {
-    let mut item = parse_expr_unary_and_single(parser, allow_object_literal)?;
+    let mut item = parse_expr_unary(parser, allow_object_literal)?;
 
     while parser.exists() {
         parser.expect_begin();
@@ -1024,7 +1024,7 @@ fn parse_expr_as(
     Ok(item)
 }
 
-fn parse_expr_unary_and_single(
+fn parse_expr_unary(
     parser: &mut Parser<impl Iterator<Item = Token>>,
     allow_object_literal: bool,
 ) -> Result<Expr, (String, Span)> {
@@ -1032,18 +1032,18 @@ fn parse_expr_unary_and_single(
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary_and_single(parser, allow_object_literal).map(|expr| Expr {
+        parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::LogNot(Box::new(expr)),
         })
     } else if parser.expect_kind(TokenKind::Add) {
         parser.expect_begin();
-        parse_expr_unary_and_single(parser, allow_object_literal)
+        parse_expr_unary(parser, allow_object_literal)
     } else if parser.expect_kind(TokenKind::Sub) {
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary_and_single(parser, allow_object_literal).map(|expr| Expr {
+        parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::Neg(Box::new(expr)),
         })
@@ -1051,12 +1051,71 @@ fn parse_expr_unary_and_single(
         let span = parser.span();
 
         parser.expect_begin();
-        parse_expr_unary_and_single(parser, allow_object_literal).map(|expr| Expr {
+        parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::BitNot(Box::new(expr)),
         })
     } else {
-        let mut item = parse_expr_member(parser, allow_object_literal)?;
+        parse_expr_single_and_member(parser, allow_object_literal)
+    }
+}
+
+fn parse_expr_single_and_member(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+    allow_object_literal: bool,
+) -> Result<Expr, (String, Span)> {
+    if parser.expect_kind(TokenKind::LogNot) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        if allow_object_literal {
+            parse_expr_object(parser)
+        } else {
+            parse_expr_item(parser)
+        }
+        .map(|expr| Expr {
+            span: span.to(expr.span),
+            kind: ExprKind::LogNot(Box::new(expr)),
+        })
+    } else if parser.expect_kind(TokenKind::Add) {
+        parser.expect_begin();
+        if allow_object_literal {
+            parse_expr_object(parser)
+        } else {
+            parse_expr_item(parser)
+        }
+    } else if parser.expect_kind(TokenKind::Sub) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        if allow_object_literal {
+            parse_expr_object(parser)
+        } else {
+            parse_expr_item(parser)
+        }
+        .map(|expr| Expr {
+            span: span.to(expr.span),
+            kind: ExprKind::Neg(Box::new(expr)),
+        })
+    } else if parser.expect_kind(TokenKind::BitNot) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        if allow_object_literal {
+            parse_expr_object(parser)
+        } else {
+            parse_expr_item(parser)
+        }
+        .map(|expr| Expr {
+            span: span.to(expr.span),
+            kind: ExprKind::BitNot(Box::new(expr)),
+        })
+    } else {
+        let mut item = if allow_object_literal {
+            parse_expr_object(parser)
+        } else {
+            parse_expr_item(parser)
+        }?;
 
         while parser.exists() {
             parser.expect_begin();
@@ -1090,6 +1149,22 @@ fn parse_expr_unary_and_single(
                     span: item.span.to(parser.span()),
                     kind: ExprKind::Index(Box::new(item), Box::new(expr)),
                 }
+            } else if parser.expect_kind(TokenKind::Dot) {
+                parser.expect_begin();
+                if let Some(id) = parser.expect_id() {
+                    item = Expr {
+                        span: item.span.to(parser.span()),
+                        kind: ExprKind::Member(
+                            Box::new(item),
+                            SymbolWithSpan {
+                                symbol: id,
+                                span: parser.span(),
+                            },
+                        ),
+                    }
+                } else {
+                    return Err(parser.expect_else());
+                }
             } else {
                 break;
             }
@@ -1097,42 +1172,6 @@ fn parse_expr_unary_and_single(
 
         Ok(item)
     }
-}
-
-fn parse_expr_member(
-    parser: &mut Parser<impl Iterator<Item = Token>>,
-    allow_object_literal: bool,
-) -> Result<Expr, (String, Span)> {
-    let mut item = if allow_object_literal {
-        parse_expr_object(parser)?
-    } else {
-        parse_expr_item(parser)?
-    };
-
-    while parser.exists() {
-        parser.expect_begin();
-        if parser.expect_kind(TokenKind::Dot) {
-            parser.expect_begin();
-            if let Some(id) = parser.expect_id() {
-                item = Expr {
-                    span: item.span.to(parser.span()),
-                    kind: ExprKind::Member(
-                        Box::new(item),
-                        SymbolWithSpan {
-                            symbol: id,
-                            span: parser.span(),
-                        },
-                    ),
-                }
-            } else {
-                return Err(parser.expect_else());
-            }
-        } else {
-            break;
-        }
-    }
-
-    Ok(item)
 }
 
 fn parse_expr_object(
