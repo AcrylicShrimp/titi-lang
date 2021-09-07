@@ -535,14 +535,6 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
             span: s.span,
             kind: StmtKind::Struct(s),
         })
-    } else if parser.expect_keyword(LET) {
-        parser.expect_begin();
-        let l = parse_let(parser)?;
-
-        Ok(Stmt {
-            span: l.span.to(parser.span()),
-            kind: StmtKind::Let(l),
-        })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();
         let f = parse_fn(None, parser)?;
@@ -550,6 +542,14 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         Ok(Stmt {
             span: f.span,
             kind: StmtKind::Fn(f),
+        })
+    } else if parser.expect_keyword(LET) {
+        parser.expect_begin();
+        let l = parse_let(parser)?;
+
+        Ok(Stmt {
+            span: l.span.to(parser.span()),
+            kind: StmtKind::Let(l),
         })
     } else if parser.expect_keyword(IF) {
         parser.expect_begin();

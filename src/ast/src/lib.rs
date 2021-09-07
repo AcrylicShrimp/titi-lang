@@ -126,8 +126,8 @@ pub struct Stmt {
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
     Struct(Struct),
-    Let(Let),
     Fn(Fn),
+    Let(Let),
     If(If),
     For(For),
     Block(Block),
