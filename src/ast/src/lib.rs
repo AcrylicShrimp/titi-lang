@@ -1,5 +1,12 @@
 use high_lexer::{Symbol, TokenLiteral};
-use span::Span;
+use span::{Source, Span};
+use std::sync::Arc;
+
+#[derive(Debug, Clone, Hash)]
+pub struct Program {
+    pub source: Arc<Source>,
+    pub top_levels: Vec<TopLevel>,
+}
 
 #[derive(Debug, Clone, Hash)]
 pub struct TopLevel {

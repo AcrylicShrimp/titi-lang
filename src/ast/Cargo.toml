@@ -9,4 +9,3 @@ edition = "2018"
 [dependencies]
 high_lexer = { path = "../high_lexer" }
 span = { path = "../span" }
-str_interner = { path = "../str_interner" }

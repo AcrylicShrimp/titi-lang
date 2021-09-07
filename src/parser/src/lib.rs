@@ -1,18 +1,32 @@
 mod cursor;
 mod parser;
 
-pub use cursor::*;
-pub use parser::*;
-
 use ast::*;
+use cursor::*;
 use high_lexer::*;
-use span::Span;
+use parser::*;
+use span::{Source, Span};
+use std::sync::Arc;
 
 // TODO: Emit diagnostics to report syntax errors.
 // TODO: Provide a way to report errors more easily.
 // TODO: Fix the expectation of the parser to be correct.
 
-pub fn parse_toplevel(
+pub fn parse(source: Arc<Source>) -> Result<Program, (String, Span)> {
+    let mut top_levels = vec![];
+
+    {
+        let mut parser = Parser::new(Cursor::new(token_iter(&source)));
+
+        while parser.exists() {
+            top_levels.push(parse_top_level(&mut parser)?);
+        }
+    }
+
+    Ok(Program { source, top_levels })
+}
+
+fn parse_top_level(
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<TopLevel, (String, Span)> {
     if parser.expect_keyword(PUB) {

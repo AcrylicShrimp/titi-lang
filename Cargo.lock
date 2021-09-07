@@ -8,7 +8,6 @@ version = "0.0.1"
 dependencies = [
  "high_lexer",
  "span",
- "str_interner",
 ]
 
 [[package]]

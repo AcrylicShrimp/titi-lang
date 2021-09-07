@@ -1,7 +1,7 @@
 use diagnostic::Diagnostic;
-use high_lexer::token_iter;
-use parser::{parse_toplevel, Cursor, Parser};
+use parser::parse;
 use span::{Pos, Source, SourcePath, Span};
+use std::sync::Arc;
 
 fn main() {
     let source = r#"
@@ -163,32 +163,26 @@ struct Test {
     },
 }
     "#;
-    let source = Source::new(
+    let source = Arc::new(Source::new(
         Span::new(Pos::new(0), Pos::new(source.len() as _)),
         "main.tt".to_owned(),
         SourcePath::Virtual("main.tt".to_owned()),
         source.to_owned(),
-    );
-    let mut parser = Parser::new(Cursor::new(token_iter(&source)));
+    ));
+    let program = match parse(source.clone()) {
+        Ok(program) => program,
+        Err(err) => {
+            let line_col = source.find_line_col(err.1.low());
+            panic!(
+                "{:?} [where: {:?}] [source: {}]",
+                err.0,
+                line_col,
+                source.slice_line(line_col.line())
+            );
+        }
+    };
 
-    while parser.exists() {
-        println!(
-            "{:?}",
-            match parse_toplevel(&mut parser) {
-                Ok(t) => t,
-                Err(e) => {
-                    let line_col = source.find_line_col(e.1.low());
-
-                    panic!(
-                        "{:?} [where: {:?}] [source: {}]",
-                        e.0,
-                        line_col,
-                        source.slice_line(line_col.line())
-                    );
-                }
-            }
-        );
-    }
+    println!("{:#?}", program);
 
     // for token in iter {
     //     println!("{:?}", token);

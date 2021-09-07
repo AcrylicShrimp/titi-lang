@@ -60,27 +60,27 @@ where
             .map_or(false, |token| token.kind() == &kind)
     }
 
-    pub fn is_id(&self) -> bool {
-        self.first.as_ref().map_or(false, |token| {
-            if let TokenKind::Id(..) = token.kind() {
-                true
-            } else {
-                false
-            }
-        })
-    }
+    // pub fn is_id(&self) -> bool {
+    //     self.first.as_ref().map_or(false, |token| {
+    //         if let TokenKind::Id(..) = token.kind() {
+    //             true
+    //         } else {
+    //             false
+    //         }
+    //     })
+    // }
 
-    pub fn is_keyword(&self, keyword: Symbol) -> bool {
-        self.id().map_or(false, |id| id == keyword)
-    }
+    // pub fn is_keyword(&self, keyword: Symbol) -> bool {
+    //     self.id().map_or(false, |id| id == keyword)
+    // }
 
-    pub fn is_literal(&self) -> bool {
-        self.first.as_ref().map_or(false, |token| {
-            if let TokenKind::Literal(..) = token.kind() {
-                true
-            } else {
-                false
-            }
-        })
-    }
+    // pub fn is_literal(&self) -> bool {
+    //     self.first.as_ref().map_or(false, |token| {
+    //         if let TokenKind::Literal(..) = token.kind() {
+    //             true
+    //         } else {
+    //             false
+    //         }
+    //     })
+    // }
 }
