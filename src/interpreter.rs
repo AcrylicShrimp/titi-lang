@@ -1,9 +1,10 @@
-use ast::{Fn, Struct, TopLevelKind};
+use ast::{Fn, StmtKind, Struct, TopLevelKind, TyKind};
 use high_lexer::{Symbol, MAIN};
 use parser::parse;
 use span::{Source, SourceMap, SourcePath};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{canonicalize, read_to_string};
+use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -98,28 +99,72 @@ impl Context {
 #[derive(Debug)]
 pub struct Runtime<'ctx> {
     stacks: Vec<CallStack<'ctx>>,
+    structs: Vec<Struct>,
+    in_module_struct_set: HashSet<(PathBuf, usize)>,
+    in_function_struct_set: HashSet<(PathBuf,)>,
 }
 
-impl<'ctx> Runtime<'ctx> {
-    pub fn new() -> Self {
-        Self { stacks: vec![] }
-    }
+// impl<'ctx> Runtime<'ctx> {
+//     pub fn new() -> Self {
+//         Self { stacks: vec![] }
+//     }
 
-    pub fn run(&mut self, ctx: &'ctx Context) {
-        let module = ctx.module("").unwrap();
-        self.exec_fn(ctx, module.functions.get(&MAIN).unwrap());
-    }
+//     pub fn run(&mut self, ctx: &'ctx Context) {
+//         let module = ctx.module("").unwrap();
+//         let main = module.functions.get(&MAIN).expect("no main function found");
 
-    fn exec_fn(&mut self, ctx: &'ctx Context, f: &Fn) {
-        println!("{:?}", f);
-    }
-}
+//         if !main.params.is_empty() {
+//             panic!("the main function should not take any parameter.");
+//         }
+
+//         if main.return_ty.is_some() {
+//             panic!("the main function should return no value.");
+//         }
+
+//         self.exec_fn(
+//             ctx,
+//             module.functions.get(&MAIN).expect("no main function found"),
+//         );
+//     }
+
+//     fn exec_fn(&mut self, ctx: &'ctx Context, f: &Fn) {
+//         let mut stack = CallStack::from_fn(f, vec![]);
+
+//         for stmt in &f.body.stmts {
+//             match &stmt.kind {
+//                 StmtKind::Struct(s) => {
+//                     self.structs.push(s.clone());
+//                     stack.types.push((s.name.symbol, s.clone()));
+//                 }
+//                 StmtKind::Let(l) => {
+//                     stack.locals.push((
+//                         l.name.symbol,
+//                         match &l.kind {
+//                             LetKind::Ty(_) => todo!(),
+//                             LetKind::Expr(_) => todo!(),
+//                             LetKind::TyExpr(_, _) => todo!(),
+//                         },
+//                     ));
+//                 }
+//                 StmtKind::Fn(_) => todo!(),
+//                 StmtKind::If(_) => todo!(),
+//                 StmtKind::For(_) => todo!(),
+//                 StmtKind::Block(_) => todo!(),
+//                 StmtKind::Break(_) => todo!(),
+//                 StmtKind::Continue(_) => todo!(),
+//                 StmtKind::Return(_) => todo!(),
+//                 StmtKind::Expr(_) => todo!(),
+//             }
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 pub struct CallStack<'ctx> {
     pub f: &'ctx Fn,
     pub args: Vec<(Symbol, Value)>,
-    pub locals: Vec<(Symbol, Value)>,
+    pub types: Vec<(Symbol, usize)>,
+    pub locals: Vec<(Symbol, TyKind, Option<Value>)>,
     pub stmt_index: usize,
 }
 
@@ -128,6 +173,7 @@ impl<'ctx> CallStack<'ctx> {
         Self {
             f,
             args,
+            types: vec![],
             locals: vec![],
             stmt_index: 0,
         }
@@ -146,7 +192,7 @@ pub enum Value {
     Str(String),
     Cptr(*const Value),
     Mptr(*mut Value),
-    Object(Symbol, Object),
+    Object(usize, Object),
 }
 
 #[derive(Debug)]

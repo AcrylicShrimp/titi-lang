@@ -20,6 +20,6 @@ fn main() {
     let mut context = interpreter::Context::default();
     context.load_module(PathBuf::from(entry), PathBuf::from(""));
 
-    let mut runtime = interpreter::Runtime::new();
-    runtime.run(&context);
+    // let mut runtime = interpreter::Runtime::new();
+    // runtime.run(&context);
 }
