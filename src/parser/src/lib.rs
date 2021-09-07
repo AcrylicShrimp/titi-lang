@@ -29,7 +29,14 @@ pub fn parse(source: Arc<Source>) -> Result<Program, (String, Span)> {
 fn parse_top_level(
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<TopLevel, (String, Span)> {
-    if parser.expect_keyword(PUB) {
+    if parser.expect_keyword(USE) {
+        parser.expect_begin();
+        let u = parse_use(parser)?;
+        Ok(TopLevel {
+            span: u.span.to(parser.span()),
+            kind: TopLevelKind::Use(u),
+        })
+    } else if parser.expect_keyword(PUB) {
         let vis = Vis {
             kind: VisKind::Pub,
             span: parser.span(),
@@ -131,6 +138,49 @@ fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (Str
         });
     } else {
         return Err(parser.expect_else());
+    })
+}
+
+fn parse_use(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Use, (String, Span)> {
+    let span = parser.span();
+
+    parser.expect_begin();
+    let mut segment_span;
+    let mut segments = vec![if let Some(id) = parser.expect_id() {
+        segment_span = parser.span();
+        SymbolWithSpan {
+            symbol: id,
+            span: parser.span(),
+        }
+    } else {
+        return Err(parser.expect_else());
+    }];
+
+    while !parser.expect_kind(TokenKind::Semicolon) {
+        if !parser.exists() {
+            return Err(parser.expect_else());
+        }
+
+        parser.expect_begin();
+        if !parser.expect_kind(TokenKind::Dot) {
+            return Err(parser.expect_else());
+        }
+
+        parser.expect_begin();
+        if let Some(id) = parser.expect_id() {
+            segment_span = parser.span();
+            segments.push(SymbolWithSpan {
+                symbol: id,
+                span: parser.span(),
+            });
+        } else {
+            return Err(parser.expect_else());
+        }
+    }
+
+    Ok(Use {
+        segments,
+        span: span.to(segment_span),
     })
 }
 
@@ -485,7 +535,7 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         let l = parse_let(parser)?;
 
         Ok(Stmt {
-            span: l.span,
+            span: l.span.to(parser.span()),
             kind: StmtKind::Let(l),
         })
     } else if parser.expect_keyword(FN) {

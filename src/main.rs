@@ -5,6 +5,9 @@ use std::sync::Arc;
 
 fn main() {
     let source = r#"
+    use a.b;
+    use b;
+    use a             .              b                        .                    c;
 pub fn test1(a cptr str, b isize) f64 {
     for {
         let a = 1;

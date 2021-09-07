@@ -55,22 +55,24 @@ pub const STR: Symbol = Symbol::from_idx_const(9);
 pub const CPTR: Symbol = Symbol::from_idx_const(10);
 pub const MPTR: Symbol = Symbol::from_idx_const(11);
 pub const AS: Symbol = Symbol::from_idx_const(12);
-pub const PUB: Symbol = Symbol::from_idx_const(13);
-pub const FN: Symbol = Symbol::from_idx_const(14);
-pub const BREAK: Symbol = Symbol::from_idx_const(15);
-pub const CONTINUE: Symbol = Symbol::from_idx_const(16);
-pub const RETURN: Symbol = Symbol::from_idx_const(17);
-pub const IF: Symbol = Symbol::from_idx_const(18);
-pub const ELSE: Symbol = Symbol::from_idx_const(19);
-pub const FOR: Symbol = Symbol::from_idx_const(20);
-pub const IN: Symbol = Symbol::from_idx_const(21);
-pub const LET: Symbol = Symbol::from_idx_const(22);
-pub const STRUCT: Symbol = Symbol::from_idx_const(23);
+pub const USE: Symbol = Symbol::from_idx_const(13);
+pub const PUB: Symbol = Symbol::from_idx_const(14);
+pub const FN: Symbol = Symbol::from_idx_const(15);
+pub const BREAK: Symbol = Symbol::from_idx_const(16);
+pub const CONTINUE: Symbol = Symbol::from_idx_const(17);
+pub const RETURN: Symbol = Symbol::from_idx_const(18);
+pub const IF: Symbol = Symbol::from_idx_const(19);
+pub const ELSE: Symbol = Symbol::from_idx_const(20);
+pub const FOR: Symbol = Symbol::from_idx_const(21);
+pub const IN: Symbol = Symbol::from_idx_const(22);
+pub const LET: Symbol = Symbol::from_idx_const(23);
+pub const STRUCT: Symbol = Symbol::from_idx_const(24);
 
 lazy_static! {
     pub(crate) static ref STR_INTERNER: Mutex<StrInterner> = StrInterner::with_prefilled(&[
         "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "cptr", "mptr", "as",
-        "pub", "fn", "break", "continue", "return", "if", "else", "for", "in", "let", "struct"
+        "use", "pub", "fn", "break", "continue", "return", "if", "else", "for", "in", "let",
+        "struct"
     ])
     .into();
 }

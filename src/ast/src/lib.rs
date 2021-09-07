@@ -16,6 +16,7 @@ pub struct TopLevel {
 
 #[derive(Debug, Clone, Hash)]
 pub enum TopLevelKind {
+    Use(Use),
     Struct(Struct),
     Fn(Fn),
 }
@@ -56,6 +57,12 @@ pub enum TyKind {
     Str,
     Cptr(Box<Ty>),
     Mptr(Box<Ty>),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct Use {
+    pub segments: Vec<SymbolWithSpan>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]
