@@ -3,7 +3,7 @@ use span::{Source, Span};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Hash)]
-pub struct Program {
+pub struct Module {
     pub source: Arc<Source>,
     pub top_levels: Vec<TopLevel>,
 }

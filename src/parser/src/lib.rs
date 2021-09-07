@@ -12,7 +12,7 @@ use std::sync::Arc;
 // TODO: Provide a way to report errors more easily.
 // TODO: Fix the expectation of the parser to be correct.
 
-pub fn parse(source: Arc<Source>) -> Result<Program, (String, Span)> {
+pub fn parse(source: Arc<Source>) -> Result<Module, (String, Span)> {
     let mut top_levels = vec![];
 
     {
@@ -23,7 +23,7 @@ pub fn parse(source: Arc<Source>) -> Result<Program, (String, Span)> {
         }
     }
 
-    Ok(Program { source, top_levels })
+    Ok(Module { source, top_levels })
 }
 
 fn parse_top_level(
