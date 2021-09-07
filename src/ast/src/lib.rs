@@ -57,6 +57,7 @@ pub enum TyKind {
     Str,
     Cptr(Box<Ty>),
     Mptr(Box<Ty>),
+    Struct(Symbol),
 }
 
 #[derive(Debug, Clone, Hash)]

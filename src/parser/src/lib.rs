@@ -136,6 +136,11 @@ fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (Str
             span: span.to(ty.span),
             kind: TyKind::Mptr(Box::new(ty)),
         });
+    } else if let Some(id) = parser.expect_id() {
+        Ty {
+            kind: TyKind::Struct(id),
+            span: parser.span(),
+        }
     } else {
         return Err(parser.expect_else());
     })
