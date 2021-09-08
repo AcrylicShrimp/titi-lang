@@ -90,7 +90,14 @@ pub enum StructFieldKind {
 
 #[derive(Debug, Clone, Hash)]
 pub struct InnerStruct {
-    pub fields: Vec<StructField>,
+    pub fields: Vec<InnerStructField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct InnerStructField {
+    pub name: SymbolWithSpan,
+    pub kind: StructFieldKind,
     pub span: Span,
 }
 

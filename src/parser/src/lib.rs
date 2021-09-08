@@ -202,20 +202,6 @@ fn parse_struct(
     } else {
         return Err(parser.expect_else());
     };
-    let inner_struct = parse_inner_struct(parser)?;
-
-    Ok(Struct {
-        vis,
-        name,
-        fields: inner_struct.fields,
-        span: span.to(inner_struct.span),
-    })
-}
-
-fn parse_inner_struct(
-    parser: &mut Parser<impl Iterator<Item = Token>>,
-) -> Result<InnerStruct, (String, Span)> {
-    let span = parser.span();
 
     parser.expect_begin();
     if !parser.expect_kind(TokenKind::OpenBrace) {
@@ -239,6 +225,7 @@ fn parse_inner_struct(
             None
         };
 
+        parser.expect_begin();
         let name = if let Some(id) = parser.expect_id() {
             SymbolWithSpan {
                 symbol: id,
@@ -265,6 +252,65 @@ fn parse_inner_struct(
         fields.push(StructField {
             span: vis.as_ref().map_or(name.span, |vis| vis.span).to(kind_span),
             vis,
+            name,
+            kind,
+        });
+
+        parser.expect_begin();
+        parser.expect_kind(TokenKind::Comma);
+    }
+
+    Ok(Struct {
+        vis,
+        name,
+        fields,
+        span: span.to(parser.span()),
+    })
+}
+
+fn parse_inner_struct(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<InnerStruct, (String, Span)> {
+    let span = parser.span();
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::OpenBrace) {
+        return Err(parser.expect_else());
+    }
+
+    let mut fields = vec![];
+
+    while !parser.expect_kind(TokenKind::CloseBrace) {
+        if !parser.exists() {
+            return Err(parser.expect_else());
+        }
+
+        parser.expect_begin();
+        let name = if let Some(id) = parser.expect_id() {
+            SymbolWithSpan {
+                symbol: id,
+                span: parser.span(),
+            }
+        } else {
+            return Err(parser.expect_else());
+        };
+
+        let kind;
+        let kind_span;
+
+        parser.expect_begin();
+        if parser.expect_keyword(STRUCT) {
+            let inner_struct = parse_inner_struct(parser)?;
+            kind_span = inner_struct.span;
+            kind = StructFieldKind::Struct(inner_struct);
+        } else {
+            let ty = parse_ty(parser)?;
+            kind_span = ty.span;
+            kind = StructFieldKind::Plain(ty);
+        }
+
+        fields.push(InnerStructField {
+            span: name.span.to(kind_span),
             name,
             kind,
         });
