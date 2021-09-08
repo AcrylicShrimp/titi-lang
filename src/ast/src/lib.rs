@@ -239,10 +239,10 @@ pub enum ExprKind {
     LogAnd(Box<Expr>, Box<Expr>),
     LogNot(Box<Expr>),
     Cast(Box<Expr>, Ty),
+    Object(Object),
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Member(Box<Expr>, SymbolWithSpan),
-    Object(Object),
     Id(SymbolWithSpan),
     Literal(Literal),
 }
