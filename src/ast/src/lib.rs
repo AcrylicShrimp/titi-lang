@@ -17,8 +17,15 @@ pub struct TopLevel {
 #[derive(Debug, Clone, Hash)]
 pub enum TopLevelKind {
     Use(Use),
-    Struct(Struct),
-    Fn(Fn),
+    Struct(TopLevelItem<Struct>),
+    Fn(TopLevelItem<Fn>),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TopLevelItem<T> {
+    pub vis: Option<Vis>,
+    pub item: T,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -68,7 +75,6 @@ pub struct Use {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Struct {
-    pub vis: Option<Vis>,
     pub name: SymbolWithSpan,
     pub fields: Vec<StructField>,
     pub span: Span,
@@ -103,7 +109,6 @@ pub struct InnerStructField {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Fn {
-    pub vis: Option<Vis>,
     pub name: SymbolWithSpan,
     pub params: Vec<FnParam>,
     pub return_ty: Option<Ty>,

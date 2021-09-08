@@ -45,34 +45,50 @@ fn parse_top_level(
         parser.expect_begin();
         if parser.expect_keyword(STRUCT) {
             parser.expect_begin();
-            let s = parse_struct(Some(vis), parser)?;
+            let s = parse_struct(parser)?;
             Ok(TopLevel {
                 span: vis.span.to(s.span),
-                kind: TopLevelKind::Struct(s),
+                kind: TopLevelKind::Struct(TopLevelItem {
+                    span: vis.span.to(s.span),
+                    vis: Some(vis),
+                    item: s,
+                }),
             })
         } else if parser.expect_keyword(FN) {
             parser.expect_begin();
-            let f = parse_fn(Some(vis), parser)?;
+            let f = parse_fn(parser)?;
             Ok(TopLevel {
                 span: vis.span.to(f.span),
-                kind: TopLevelKind::Fn(f),
+                kind: TopLevelKind::Fn(TopLevelItem {
+                    span: vis.span.to(f.span),
+                    vis: Some(vis),
+                    item: f,
+                }),
             })
         } else {
             Err(parser.expect_else())
         }
     } else if parser.expect_keyword(STRUCT) {
         parser.expect_begin();
-        let s = parse_struct(None, parser)?;
+        let s = parse_struct(parser)?;
         Ok(TopLevel {
             span: s.span,
-            kind: TopLevelKind::Struct(s),
+            kind: TopLevelKind::Struct(TopLevelItem {
+                span: s.span,
+                vis: None,
+                item: s,
+            }),
         })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();
-        let f = parse_fn(None, parser)?;
+        let f = parse_fn(parser)?;
         Ok(TopLevel {
             span: f.span,
-            kind: TopLevelKind::Fn(f),
+            kind: TopLevelKind::Fn(TopLevelItem {
+                span: f.span,
+                vis: None,
+                item: f,
+            }),
         })
     } else {
         Err(parser.expect_else())
@@ -190,10 +206,9 @@ fn parse_use(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Use, (S
 }
 
 fn parse_struct(
-    vis: Option<Vis>,
     parser: &mut Parser<impl Iterator<Item = Token>>,
 ) -> Result<Struct, (String, Span)> {
-    let span = vis.as_ref().map_or(parser.span(), |vis| vis.span);
+    let span = parser.span();
     let name = if let Some(id) = parser.expect_id() {
         SymbolWithSpan {
             symbol: id,
@@ -261,7 +276,6 @@ fn parse_struct(
     }
 
     Ok(Struct {
-        vis,
         name,
         fields,
         span: span.to(parser.span()),
@@ -325,11 +339,8 @@ fn parse_inner_struct(
     })
 }
 
-fn parse_fn(
-    vis: Option<Vis>,
-    parser: &mut Parser<impl Iterator<Item = Token>>,
-) -> Result<Fn, (String, Span)> {
-    let span = vis.as_ref().map_or(parser.span(), |vis| vis.span);
+fn parse_fn(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Fn, (String, Span)> {
+    let span = parser.span();
     let name = if let Some(id) = parser.expect_id() {
         SymbolWithSpan {
             symbol: id,
@@ -390,7 +401,6 @@ fn parse_fn(
 
     return Ok(Fn {
         span: span.to(body.span),
-        vis,
         name,
         params,
         return_ty,
@@ -575,7 +585,7 @@ fn parse_block(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Block
 fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, (String, Span)> {
     if parser.expect_keyword(STRUCT) {
         parser.expect_begin();
-        let s = parse_struct(None, parser)?;
+        let s = parse_struct(parser)?;
 
         Ok(Stmt {
             span: s.span,
@@ -583,7 +593,7 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();
-        let f = parse_fn(None, parser)?;
+        let f = parse_fn(parser)?;
 
         Ok(Stmt {
             span: f.span,
