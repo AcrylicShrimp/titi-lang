@@ -19,6 +19,12 @@ impl Symbol {
     }
 }
 
+impl<'s> PartialEq<&'s str> for Symbol {
+    fn eq(&self, other: &&'s str) -> bool {
+        self.as_str() == *other
+    }
+}
+
 impl From<Symbol> for u32 {
     fn from(symbol: Symbol) -> Self {
         u32::from(symbol.0)

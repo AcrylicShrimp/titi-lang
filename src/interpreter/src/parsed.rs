@@ -334,6 +334,7 @@ impl Context {
                         ParsedStmtKind::Expr(self.parse_expr(top_level_structs, scope, item))
                     }
                 },
+                scope,
                 span: stmt.span,
             },
             scope,
@@ -814,6 +815,7 @@ pub struct ParsedTopLevelFunction {
 #[derive(Debug)]
 pub struct ParsedStmt {
     pub kind: ParsedStmtKind,
+    pub scope: usize,
     pub span: Span,
 }
 
