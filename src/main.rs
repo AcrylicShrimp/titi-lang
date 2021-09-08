@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 fn main() {
     let matches = App::new("ttc")
-        .version("0.1.0")
-        .author("AcrylicShrimp <led789zxpp@naver.com>")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .about("titi-lang compiler")
         .arg(
             Arg::with_name("entry")
