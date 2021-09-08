@@ -34,24 +34,24 @@ impl ParsedModule {
         let mut structs = HashMap::new();
         let mut functions = HashMap::new();
 
-        for top_level in module.top_levels {
-            match top_level.kind {
-                TopLevelKind::Use(u) => {
-                    uses.push(
-                        u.segments
-                            .iter()
-                            .map(|segment| segment.symbol.as_str())
-                            .collect::<PathBuf>(),
-                    );
-                }
-                TopLevelKind::Struct(s) => {
-                    structs.insert(s.name.symbol, s);
-                }
-                TopLevelKind::Fn(f) => {
-                    functions.insert(f.name.symbol, f);
-                }
-            }
-        }
+        // for top_level in module.top_levels {
+        //     match top_level.kind {
+        //         TopLevelKind::Use(u) => {
+        //             uses.push(
+        //                 u.segments
+        //                     .iter()
+        //                     .map(|segment| segment.symbol.as_str())
+        //                     .collect::<PathBuf>(),
+        //             );
+        //         }
+        //         TopLevelKind::Struct(s) => {
+        //             structs.insert(s.item.name.symbol, s);
+        //         }
+        //         TopLevelKind::Fn(f) => {
+        //             functions.insert(f.item.name.symbol, f);
+        //         }
+        //     }
+        // }
 
         (
             Self {
