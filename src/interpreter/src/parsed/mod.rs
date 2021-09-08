@@ -6,7 +6,7 @@ use high_lexer::TokenLiteral;
 use parser::parse;
 use span::{Source, SourceMap, Span};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[derive(Debug, Default)]
@@ -19,6 +19,10 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn has_module<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.modules.contains_key(path.as_ref())
+    }
+
     pub fn scope(&self, index: usize) -> &ParsedScope {
         &self.scopes[index]
     }
@@ -33,6 +37,10 @@ impl Context {
 
     pub fn update_function_body(&mut self, index: usize, body: ParsedStmtBlock) {
         self.functions[index].body = body;
+    }
+
+    pub fn register_module(&mut self, path: PathBuf, module: ParsedModule) {
+        self.modules.insert(path, module);
     }
 
     pub fn register_scope(&mut self, parent: Option<usize>, kind: ParsedScopeKind) -> usize {
@@ -409,44 +417,167 @@ impl Context {
     ) -> ParsedExpr {
         ParsedExpr {
             kind: match item.kind {
-                ExprKind::Assign(lhs, rhs) => todo!(),
-                ExprKind::AssignAdd(lhs, rhs) => todo!(),
-                ExprKind::AssignSub(lhs, rhs) => todo!(),
-                ExprKind::AssignMul(lhs, rhs) => todo!(),
-                ExprKind::AssignDiv(lhs, rhs) => todo!(),
-                ExprKind::AssignMod(lhs, rhs) => todo!(),
-                ExprKind::AssignShl(lhs, rhs) => todo!(),
-                ExprKind::AssignShr(lhs, rhs) => todo!(),
-                ExprKind::AssignBitOr(lhs, rhs) => todo!(),
-                ExprKind::AssignBitAnd(lhs, rhs) => todo!(),
-                ExprKind::AssignBitXor(lhs, rhs) => todo!(),
-                ExprKind::AssignBitNot(lhs, rhs) => todo!(),
-                ExprKind::Rng(lhs, rhs) => todo!(),
-                ExprKind::RngInclusive(lhs, rhs) => todo!(),
-                ExprKind::Eq(lhs, rhs) => todo!(),
-                ExprKind::Ne(lhs, rhs) => todo!(),
-                ExprKind::Lt(lhs, rhs) => todo!(),
-                ExprKind::Gt(lhs, rhs) => todo!(),
-                ExprKind::Le(lhs, rhs) => todo!(),
-                ExprKind::Ge(lhs, rhs) => todo!(),
-                ExprKind::Neg(lhs) => todo!(),
-                ExprKind::Add(lhs, rhs) => todo!(),
-                ExprKind::Sub(lhs, rhs) => todo!(),
-                ExprKind::Mul(lhs, rhs) => todo!(),
-                ExprKind::Div(lhs, rhs) => todo!(),
-                ExprKind::Mod(lhs, rhs) => todo!(),
-                ExprKind::Shl(lhs, rhs) => todo!(),
-                ExprKind::Shr(lhs, rhs) => todo!(),
-                ExprKind::BitOr(lhs, rhs) => todo!(),
-                ExprKind::BitAnd(lhs, rhs) => todo!(),
-                ExprKind::BitXor(lhs, rhs) => todo!(),
-                ExprKind::BitNot(lhs) => todo!(),
-                ExprKind::LogOr(lhs, rhs) => todo!(),
-                ExprKind::LogAnd(lhs, rhs) => todo!(),
-                ExprKind::LogNot(lhs) => todo!(),
-                ExprKind::Cast(lhs, rhs) => todo!(),
+                ExprKind::Assign(lhs, rhs) => ParsedExprKind::Assign(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignAdd(lhs, rhs) => ParsedExprKind::AssignAdd(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignSub(lhs, rhs) => ParsedExprKind::AssignSub(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignMul(lhs, rhs) => ParsedExprKind::AssignMul(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignDiv(lhs, rhs) => ParsedExprKind::AssignDiv(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignMod(lhs, rhs) => ParsedExprKind::AssignMod(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignShl(lhs, rhs) => ParsedExprKind::AssignShl(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignShr(lhs, rhs) => ParsedExprKind::AssignShr(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignBitOr(lhs, rhs) => ParsedExprKind::AssignBitOr(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignBitAnd(lhs, rhs) => ParsedExprKind::AssignBitAnd(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignBitXor(lhs, rhs) => ParsedExprKind::AssignBitXor(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::AssignBitNot(lhs, rhs) => ParsedExprKind::AssignBitNot(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Rng(lhs, rhs) => ParsedExprKind::Rng(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::RngInclusive(lhs, rhs) => ParsedExprKind::RngInclusive(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Eq(lhs, rhs) => ParsedExprKind::Eq(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Ne(lhs, rhs) => ParsedExprKind::Ne(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Lt(lhs, rhs) => ParsedExprKind::Lt(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Gt(lhs, rhs) => ParsedExprKind::Gt(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Le(lhs, rhs) => ParsedExprKind::Le(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Ge(lhs, rhs) => ParsedExprKind::Ge(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Neg(lhs) => ParsedExprKind::Neg(Box::new(self.parse_expr(
+                    top_level_structs,
+                    top_level_functions,
+                    scope,
+                    *lhs,
+                ))),
+                ExprKind::Add(lhs, rhs) => ParsedExprKind::Add(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Sub(lhs, rhs) => ParsedExprKind::Sub(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Mul(lhs, rhs) => ParsedExprKind::Mul(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Div(lhs, rhs) => ParsedExprKind::Div(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Mod(lhs, rhs) => ParsedExprKind::Mod(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Shl(lhs, rhs) => ParsedExprKind::Shl(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::Shr(lhs, rhs) => ParsedExprKind::Shr(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::BitOr(lhs, rhs) => ParsedExprKind::BitOr(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::BitAnd(lhs, rhs) => ParsedExprKind::BitAnd(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::BitXor(lhs, rhs) => ParsedExprKind::BitXor(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::BitNot(lhs) => ParsedExprKind::BitNot(Box::new(self.parse_expr(
+                    top_level_structs,
+                    top_level_functions,
+                    scope,
+                    *lhs,
+                ))),
+                ExprKind::LogOr(lhs, rhs) => ParsedExprKind::LogOr(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::LogAnd(lhs, rhs) => ParsedExprKind::LogAnd(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *rhs)),
+                ),
+                ExprKind::LogNot(lhs) => ParsedExprKind::LogNot(Box::new(self.parse_expr(
+                    top_level_structs,
+                    top_level_functions,
+                    scope,
+                    *lhs,
+                ))),
+                ExprKind::Cast(lhs, rhs) => ParsedExprKind::Cast(
+                    Box::new(self.parse_expr(top_level_structs, top_level_functions, scope, *lhs)),
+                    self.parse_ty(top_level_structs, Some(scope), rhs),
+                ),
                 ExprKind::Object(lhs) => todo!(),
-                ExprKind::Call(lhs, rhs) => todo!(),
+                ExprKind::Call(lhs, rhs) => {
+                    let expr = self.parse_expr(top_level_structs, top_level_functions, scope, *lhs);
+
+                    if let &ParsedExprKind::Id(id) = &expr.kind {
+                        // TODO: Look up the function in the scope
+                        ParsedExprKind::DirectCall(0, vec![])
+                    } else {
+                        todo!()
+                    }
+                }
                 ExprKind::Index(lhs, rhs) => todo!(),
                 ExprKind::Member(lhs, rhs) => todo!(),
                 ExprKind::Id(lhs) => todo!(),
@@ -766,45 +897,46 @@ pub struct ParsedExpr {
 
 #[derive(Debug)]
 pub enum ParsedExprKind {
-    Assign(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignAdd(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignSub(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignMul(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignDiv(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignMod(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignShl(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignShr(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignBitOr(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignBitAnd(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignBitXor(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    AssignBitNot(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Rng(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    RngInclusive(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Eq(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Ne(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Lt(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Gt(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Le(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Ge(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Neg(Box<ParsedExprKind>),
-    Add(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Sub(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Mul(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Div(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Mod(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Shl(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Shr(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    BitOr(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    BitAnd(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    BitXor(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    BitNot(Box<ParsedExprKind>),
-    LogOr(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    LogAnd(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    LogNot(Box<ParsedExprKind>),
-    Cast(Box<ParsedExprKind>, ParsedTy),
-    Call(Box<ParsedExprKind>, Vec<ParsedExprKind>),
-    Index(Box<ParsedExprKind>, Box<ParsedExprKind>),
-    Member(Box<ParsedExprKind>, SymbolWithSpan),
+    Assign(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignAdd(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignSub(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignMul(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignDiv(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignMod(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignShl(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignShr(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignBitOr(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignBitAnd(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignBitXor(Box<ParsedExpr>, Box<ParsedExpr>),
+    AssignBitNot(Box<ParsedExpr>, Box<ParsedExpr>),
+    Rng(Box<ParsedExpr>, Box<ParsedExpr>),
+    RngInclusive(Box<ParsedExpr>, Box<ParsedExpr>),
+    Eq(Box<ParsedExpr>, Box<ParsedExpr>),
+    Ne(Box<ParsedExpr>, Box<ParsedExpr>),
+    Lt(Box<ParsedExpr>, Box<ParsedExpr>),
+    Gt(Box<ParsedExpr>, Box<ParsedExpr>),
+    Le(Box<ParsedExpr>, Box<ParsedExpr>),
+    Ge(Box<ParsedExpr>, Box<ParsedExpr>),
+    Neg(Box<ParsedExpr>),
+    Add(Box<ParsedExpr>, Box<ParsedExpr>),
+    Sub(Box<ParsedExpr>, Box<ParsedExpr>),
+    Mul(Box<ParsedExpr>, Box<ParsedExpr>),
+    Div(Box<ParsedExpr>, Box<ParsedExpr>),
+    Mod(Box<ParsedExpr>, Box<ParsedExpr>),
+    Shl(Box<ParsedExpr>, Box<ParsedExpr>),
+    Shr(Box<ParsedExpr>, Box<ParsedExpr>),
+    BitOr(Box<ParsedExpr>, Box<ParsedExpr>),
+    BitAnd(Box<ParsedExpr>, Box<ParsedExpr>),
+    BitXor(Box<ParsedExpr>, Box<ParsedExpr>),
+    BitNot(Box<ParsedExpr>),
+    LogOr(Box<ParsedExpr>, Box<ParsedExpr>),
+    LogAnd(Box<ParsedExpr>, Box<ParsedExpr>),
+    LogNot(Box<ParsedExpr>),
+    Cast(Box<ParsedExpr>, ParsedTy),
+    DirectCall(usize, Vec<ParsedExpr>),
+    IndirectCall(Box<ParsedExpr>, Vec<ParsedExpr>),
+    Index(Box<ParsedExpr>, Box<ParsedExpr>),
+    Member(Box<ParsedExpr>, SymbolWithSpan),
     Object(ParsedExprObject),
     Id(SymbolWithSpan),
     Literal(ParsedExprLiteral),
