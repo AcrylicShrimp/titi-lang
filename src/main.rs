@@ -1,6 +1,5 @@
-mod interpreter;
-
 use clap::{App, Arg};
+use interpreter::init;
 use std::path::PathBuf;
 
 fn main() {
@@ -16,10 +15,7 @@ fn main() {
         )
         .get_matches();
     let entry = matches.value_of("entry").unwrap();
+    let mut ctx = init(PathBuf::from(entry));
 
-    let mut context = interpreter::Context::default();
-    context.load_module(PathBuf::from(entry), PathBuf::from(""));
-
-    // let mut runtime = interpreter::Runtime::new();
-    // runtime.run(&context);
+    print!("{:?}", ctx);
 }
