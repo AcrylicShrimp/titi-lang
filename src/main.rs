@@ -1,5 +1,6 @@
 use clap::{App, Arg};
-use interpreter::init;
+use high_lexer::MAIN;
+use interpreter::{init, Runtime};
 use std::path::PathBuf;
 
 fn main() {
@@ -15,7 +16,16 @@ fn main() {
         )
         .get_matches();
     let entry = matches.value_of("entry").unwrap();
-    let mut ctx = init(PathBuf::from(entry));
+    let ctx = init(PathBuf::from(entry));
+    let module = ctx.module("").unwrap();
+    let function = module
+        .top_level_functions
+        .iter()
+        .rev()
+        .find(|f| f.name.symbol == MAIN)
+        .expect("no main function found");
+    let function = ctx.function(function.def);
 
-    print!("{:?}", ctx);
+    let runtime = Runtime::new(&ctx);
+    runtime.call(module, function, vec![]);
 }
