@@ -14,6 +14,7 @@ pub struct Context {
     scopes: Vec<ParsedScope>,
     structs: Vec<ParsedStruct>,
     functions: Vec<ParsedFunction>,
+    function_headers: Vec<ParsedFunctionHeader>,
 }
 
 impl Context {
@@ -199,23 +200,28 @@ impl Context {
         scope: Option<usize>,
         item: Fn,
     ) -> (SymbolWithSpan, usize, Block) {
-        let name = item.name;
+        let name = item.header.name;
         let def = self.functions.len();
 
         self.functions.push(ParsedFunction {
-            name: item.name,
-            params: item
-                .params
-                .into_iter()
-                .map(|param| ParsedFunctionParam {
-                    name: param.name,
-                    ty: self.parse_ty(top_level_structs, scope, param.ty),
-                    span: param.span,
-                })
-                .collect(),
-            return_ty: item
-                .return_ty
-                .map(|ty| self.parse_ty(top_level_structs, scope, ty)),
+            header: ParsedFunctionHeader {
+                name: item.header.name,
+                params: item
+                    .header
+                    .params
+                    .into_iter()
+                    .map(|param| ParsedFunctionParam {
+                        name: param.name,
+                        ty: self.parse_ty(top_level_structs, scope, param.ty),
+                        span: param.span,
+                    })
+                    .collect(),
+                return_ty: item
+                    .header
+                    .return_ty
+                    .map(|ty| self.parse_ty(top_level_structs, scope, ty)),
+                span: item.header.span,
+            },
             body: ParsedStmtBlock {
                 stmts: vec![],
                 span: item.body.span,
@@ -224,6 +230,34 @@ impl Context {
         });
 
         (name, def, item.body)
+    }
+
+    pub fn register_function_header(
+        &mut self,
+        top_level_structs: &[ParsedTopLevelStruct],
+        item: FnHeader,
+    ) -> (SymbolWithSpan, usize) {
+        let name = item.name;
+        let def = self.function_headers.len();
+
+        self.function_headers.push(ParsedFunctionHeader {
+            name: item.name,
+            params: item
+                .params
+                .into_iter()
+                .map(|param| ParsedFunctionParam {
+                    name: param.name,
+                    ty: self.parse_ty(top_level_structs, None, param.ty),
+                    span: param.span,
+                })
+                .collect(),
+            return_ty: item
+                .return_ty
+                .map(|ty| self.parse_ty(top_level_structs, None, ty)),
+            span: item.span,
+        });
+
+        (name, def)
     }
 
     pub fn parse_stmt(
@@ -620,6 +654,7 @@ pub struct ParsedModule {
     pub uses: Vec<PathBuf>,
     pub top_level_structs: Vec<ParsedTopLevelStruct>,
     pub top_level_functions: Vec<ParsedTopLevelFunction>,
+    pub top_level_function_headers: Vec<ParsedTopLevelFunctionHeader>,
 }
 
 impl ParsedModule {
@@ -640,6 +675,7 @@ impl ParsedModule {
         let mut uses = vec![];
         let mut structs = Vec::new();
         let mut functions = Vec::new();
+        let mut function_headers = Vec::new();
 
         for top_level in module.top_levels {
             match top_level.kind {
@@ -655,7 +691,7 @@ impl ParsedModule {
                     let (name, def) = ctx.register_struct(&structs, None, item.item);
                     structs.push(ParsedTopLevelStruct {
                         name,
-                        vis: item.vis.map(|vis| vis.into()),
+                        prefix: item.prefix.map(|prefix| prefix.into()),
                         def,
                     });
                 }
@@ -663,7 +699,7 @@ impl ParsedModule {
                     let (name, def, body) = ctx.register_function(&structs, None, item.item);
                     functions.push(ParsedTopLevelFunction {
                         name,
-                        vis: item.vis.map(|vis| vis.into()),
+                        prefix: item.prefix.map(|prefix| prefix.into()),
                         def,
                     });
 
@@ -674,6 +710,10 @@ impl ParsedModule {
                     let body = ctx.parse_block(&structs, &functions, scope, body);
                     ctx.update_function_body(def, body);
                 }
+                TopLevelKind::FnHeader(item) => {
+                    let (name, def) = ctx.register_function_header(&structs, item.header);
+                    function_headers.push(ParsedTopLevelFunctionHeader { name, def });
+                }
             }
         }
 
@@ -682,6 +722,65 @@ impl ParsedModule {
             uses,
             top_level_structs: structs,
             top_level_functions: functions,
+            top_level_function_headers: function_headers,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ParsedPrefix {
+    pub kind: ParsedPrefixKind,
+    pub span: Span,
+}
+
+impl From<TopLevelItemPrefix> for ParsedPrefix {
+    fn from(prefix: TopLevelItemPrefix) -> Self {
+        Self {
+            kind: prefix.kind.into(),
+            span: prefix.span,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ParsedPrefixKind {
+    Extern(ParsedExtern),
+    Vis(ParsedVis),
+}
+
+impl From<TopLevelItemPrefixKind> for ParsedPrefixKind {
+    fn from(kind: TopLevelItemPrefixKind) -> Self {
+        match kind {
+            TopLevelItemPrefixKind::Extern(ext) => Self::Extern(ext.into()),
+            TopLevelItemPrefixKind::Vis(vis) => Self::Vis(vis.into()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ParsedExtern {
+    pub kind: ParsedExternKind,
+    pub span: Span,
+}
+
+impl From<Extern> for ParsedExtern {
+    fn from(ext: Extern) -> Self {
+        Self {
+            kind: ParsedExternKind::from(ext.kind),
+            span: ext.span,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ParsedExternKind {
+    Extern,
+}
+
+impl From<ExternKind> for ParsedExternKind {
+    fn from(kind: ExternKind) -> Self {
+        match kind {
+            ExternKind::Extern => Self::Extern,
         }
     }
 }
@@ -784,10 +883,16 @@ pub struct ParsedStructField {
 
 #[derive(Debug)]
 pub struct ParsedFunction {
+    pub header: ParsedFunctionHeader,
+    pub body: ParsedStmtBlock,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct ParsedFunctionHeader {
     pub name: SymbolWithSpan,
     pub params: Vec<ParsedFunctionParam>,
     pub return_ty: Option<ParsedTy>,
-    pub body: ParsedStmtBlock,
     pub span: Span,
 }
 
@@ -801,14 +906,20 @@ pub struct ParsedFunctionParam {
 #[derive(Debug)]
 pub struct ParsedTopLevelStruct {
     pub name: SymbolWithSpan,
-    pub vis: Option<ParsedVis>,
+    pub prefix: Option<ParsedPrefix>,
     pub def: usize,
 }
 
 #[derive(Debug)]
 pub struct ParsedTopLevelFunction {
     pub name: SymbolWithSpan,
-    pub vis: Option<ParsedVis>,
+    pub prefix: Option<ParsedPrefix>,
+    pub def: usize,
+}
+
+#[derive(Debug)]
+pub struct ParsedTopLevelFunctionHeader {
+    pub name: SymbolWithSpan,
     pub def: usize,
 }
 

@@ -19,13 +19,19 @@ pub enum TopLevelKind {
     Use(Use),
     Struct(TopLevelItem<Struct>),
     Fn(TopLevelItem<Fn>),
-    FnHeader(TopLevelItem<FnHeader>),
+    FnHeader(TopLevelFnHeader),
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct TopLevelItem<T> {
     pub prefix: Option<TopLevelItemPrefix>,
     pub item: T,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TopLevelFnHeader {
+    pub header: FnHeader,
     pub span: Span,
 }
 

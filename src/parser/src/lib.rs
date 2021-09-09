@@ -65,10 +65,9 @@ fn parse_top_level(
             if parser.expect_kind(TokenKind::Semicolon) {
                 Ok(TopLevel {
                     span: prefix.span.to(parser.span()),
-                    kind: TopLevelKind::FnHeader(TopLevelItem {
+                    kind: TopLevelKind::FnHeader(TopLevelFnHeader {
                         span: prefix.span.to(header.span),
-                        prefix: Some(prefix),
-                        item: header,
+                        header,
                     }),
                 })
             } else if parser.expect_kind(TokenKind::OpenBrace) {
