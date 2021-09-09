@@ -466,7 +466,9 @@ fn parse_fn_header(
 
     let mut return_ty = None;
 
-    if !parser.expect_kind(TokenKind::Semicolon) && !parser.expect_kind(TokenKind::OpenBrace) {
+    if !parser.cursor().is_kind(TokenKind::Semicolon)
+        && !parser.cursor().is_kind(TokenKind::OpenBrace)
+    {
         parser.expect_begin();
         return_ty = Some(parse_ty(parser)?);
     }
