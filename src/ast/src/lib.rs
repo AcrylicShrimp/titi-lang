@@ -19,6 +19,7 @@ pub enum TopLevelKind {
     Use(Use),
     Struct(TopLevelItem<Struct>),
     Fn(TopLevelItem<Fn>),
+    FnHeader(TopLevelItem<FnHeader>),
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -132,10 +133,16 @@ pub struct InnerStructField {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Fn {
+    pub header: FnHeader,
+    pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct FnHeader {
     pub name: SymbolWithSpan,
     pub params: Vec<FnParam>,
     pub return_ty: Option<Ty>,
-    pub body: Block,
     pub span: Span,
 }
 

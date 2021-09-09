@@ -59,15 +59,37 @@ fn parse_top_level(
             })
         } else if parser.expect_keyword(FN) {
             parser.expect_begin();
-            let item = parse_fn(parser)?;
-            Ok(TopLevel {
-                span: prefix.span.to(item.span),
-                kind: TopLevelKind::Fn(TopLevelItem {
-                    span: prefix.span.to(item.span),
-                    prefix: Some(prefix),
-                    item,
-                }),
-            })
+            let header = parse_fn_header(parser)?;
+
+            parser.expect_begin();
+            if parser.expect_kind(TokenKind::Semicolon) {
+                Ok(TopLevel {
+                    span: prefix.span.to(parser.span()),
+                    kind: TopLevelKind::FnHeader(TopLevelItem {
+                        span: prefix.span.to(header.span),
+                        prefix: Some(prefix),
+                        item: header,
+                    }),
+                })
+            } else if parser.expect_kind(TokenKind::OpenBrace) {
+                parser.expect_begin();
+                let body = parse_block(parser)?;
+
+                Ok(TopLevel {
+                    span: prefix.span.to(body.span),
+                    kind: TopLevelKind::Fn(TopLevelItem {
+                        span: prefix.span.to(body.span),
+                        prefix: Some(prefix),
+                        item: Fn {
+                            span: header.span.to(body.span),
+                            header,
+                            body,
+                        },
+                    }),
+                })
+            } else {
+                Err(parser.expect_else())
+            }
         } else {
             Err(parser.expect_else())
         }
@@ -378,6 +400,27 @@ fn parse_inner_struct(
 }
 
 fn parse_fn(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Fn, (String, Span)> {
+    parser.expect_begin();
+    let header = parse_fn_header(parser)?;
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::OpenBrace) {
+        return Err(parser.expect_else());
+    }
+
+    parser.expect_begin();
+    let body = parse_block(parser)?;
+
+    Ok(Fn {
+        span: header.span.to(body.span),
+        header,
+        body,
+    })
+}
+
+fn parse_fn_header(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<FnHeader, (String, Span)> {
     let span = parser.span();
     let name = if let Some(id) = parser.expect_id() {
         SymbolWithSpan {
@@ -424,26 +467,17 @@ fn parse_fn(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Fn, (Str
 
     let mut return_ty = None;
 
-    parser.expect_begin();
-    if !parser.expect_kind(TokenKind::OpenBrace) {
-        return_ty = Some(parse_ty(parser)?);
-
+    if !parser.expect_kind(TokenKind::Semicolon) && !parser.expect_kind(TokenKind::OpenBrace) {
         parser.expect_begin();
-        if !parser.expect_kind(TokenKind::OpenBrace) {
-            return Err(parser.expect_else());
-        }
+        return_ty = Some(parse_ty(parser)?);
     }
 
-    parser.expect_begin();
-    let body = parse_block(parser)?;
-
-    return Ok(Fn {
-        span: span.to(body.span),
+    Ok(FnHeader {
         name,
         params,
         return_ty,
-        body,
-    });
+        span: span.to(parser.span()),
+    })
 }
 
 fn parse_let(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Let, (String, Span)> {
