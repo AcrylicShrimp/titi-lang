@@ -1,5 +1,5 @@
 use ast::*;
-use high_lexer::TokenLiteral;
+use high_lexer::{Symbol, TokenLiteral};
 use parser::parse;
 use span::{Source, SourceMap, SourcePath, Span};
 use std::collections::HashMap;
@@ -13,6 +13,7 @@ pub struct Context {
     modules: HashMap<PathBuf, ParsedModule>,
     scopes: Vec<ParsedScope>,
     structs: Vec<ParsedStruct>,
+    inner_structs: HashMap<(usize, Symbol), usize>,
     functions: Vec<ParsedFunction>,
     function_headers: Vec<ParsedFunctionHeader>,
 }
@@ -66,67 +67,77 @@ impl Context {
         scope: Option<usize>,
         item: Struct,
     ) -> (SymbolWithSpan, usize) {
-        let name = item.name;
-        let parsed = ParsedStruct {
+        let def = self.structs.len();
+        self.structs.push(ParsedStruct {
             name: ParsedStructNameKind::Named(item.name),
-            fields: item
-                .fields
-                .into_iter()
-                .map(|field| ParsedStructField {
-                    name: field.name,
-                    ty: match field.kind {
-                        StructFieldKind::Plain(ty) => self.parse_ty(top_level_structs, scope, ty),
-                        StructFieldKind::Struct(item) => ParsedTy {
-                            span: item.span,
-                            kind: ParsedTyKind::Struct(self.register_inner_struct(
-                                top_level_structs,
-                                scope,
-                                item,
-                            )),
-                        },
-                    },
-                    span: field.span,
-                })
-                .collect(),
+            fields: vec![],
             span: item.span,
-        };
+        });
 
-        self.structs.push(parsed);
-        (name, self.structs.len() - 1)
+        let fields = item
+            .fields
+            .into_iter()
+            .map(|field| ParsedStructField {
+                name: field.name,
+                ty: match field.kind {
+                    StructFieldKind::Plain(ty) => self.parse_ty(top_level_structs, scope, ty),
+                    StructFieldKind::Struct(item) => ParsedTy {
+                        span: item.span,
+                        kind: ParsedTyKind::Struct(self.register_inner_struct(
+                            top_level_structs,
+                            scope,
+                            def,
+                            field.name.symbol,
+                            item,
+                        )),
+                    },
+                },
+                span: field.span,
+            })
+            .collect();
+        self.structs[def].fields = fields;
+        (item.name, def)
     }
 
     fn register_inner_struct(
         &mut self,
         top_level_structs: &[ParsedTopLevelStruct],
         scope: Option<usize>,
+        parent: usize,
+        field_name: Symbol,
         item: InnerStruct,
     ) -> usize {
-        let parsed = ParsedStruct {
+        let def = self.structs.len();
+        self.structs.push(ParsedStruct {
             name: ParsedStructNameKind::Inner,
-            fields: item
-                .fields
-                .into_iter()
-                .map(|field| ParsedStructField {
-                    name: field.name,
-                    ty: match field.kind {
-                        StructFieldKind::Plain(ty) => self.parse_ty(top_level_structs, scope, ty),
-                        StructFieldKind::Struct(item) => ParsedTy {
-                            span: item.span,
-                            kind: ParsedTyKind::Struct(self.register_inner_struct(
-                                top_level_structs,
-                                scope,
-                                item,
-                            )),
-                        },
-                    },
-                    span: field.span,
-                })
-                .collect(),
+            fields: vec![],
             span: item.span,
-        };
+        });
+        self.inner_structs.insert((parent, field_name), def);
 
-        self.structs.push(parsed);
-        self.structs.len() - 1
+        let fields = item
+            .fields
+            .into_iter()
+            .map(|field| ParsedStructField {
+                name: field.name,
+                ty: match field.kind {
+                    StructFieldKind::Plain(ty) => self.parse_ty(top_level_structs, scope, ty),
+                    StructFieldKind::Struct(item) => ParsedTy {
+                        span: item.span,
+                        kind: ParsedTyKind::Struct(self.register_inner_struct(
+                            top_level_structs,
+                            scope,
+                            def,
+                            field.name.symbol,
+                            item,
+                        )),
+                    },
+                },
+                span: field.span,
+            })
+            .collect();
+        self.structs[def].fields = fields;
+        def
     }
 
     /// Parse a type or lookup a previously parsed struct.
@@ -154,43 +165,53 @@ impl Context {
                     ParsedTyKind::Mptr(Box::new(self.parse_ty(top_level_structs, scope, *ty)))
                 }
                 TyKind::Struct(item) => {
-                    if let Some(scope) = scope {
-                        let mut scope = self.scope(scope);
-
-                        loop {
-                            if let ParsedScopeKind::Struct(target) = &scope.kind {
-                                if target.name.symbol == item {
-                                    return ParsedTy {
-                                        kind: ParsedTyKind::Struct(target.def),
-                                        span: ty.span,
-                                    };
-                                }
-                            }
-
-                            scope = if let Some(parent) = scope.parent {
-                                self.scope(parent)
-                            } else {
-                                break;
-                            };
-                        }
-                    }
-
-                    if let Some(target) = top_level_structs
-                        .iter()
-                        .rev()
-                        .find(|&target| target.name.symbol == item)
-                    {
-                        return ParsedTy {
-                            kind: ParsedTyKind::Struct(target.def),
-                            span: ty.span,
-                        };
-                    }
-
-                    panic!("no struct '{}' found", item);
+                    return ParsedTy {
+                        kind: ParsedTyKind::Struct(self.resolve_struct_ty(
+                            top_level_structs,
+                            scope,
+                            item,
+                        )),
+                        span: ty.span,
+                    };
                 }
             },
             span: ty.span,
         }
+    }
+
+    fn resolve_struct_ty(
+        &self,
+        top_level_structs: &[ParsedTopLevelStruct],
+        scope: Option<usize>,
+        item: Symbol,
+    ) -> usize {
+        if let Some(scope) = scope {
+            let mut scope = self.scope(scope);
+
+            loop {
+                if let ParsedScopeKind::Struct(target) = &scope.kind {
+                    if target.name.symbol == item {
+                        return target.def;
+                    }
+                }
+
+                scope = if let Some(parent) = scope.parent {
+                    self.scope(parent)
+                } else {
+                    break;
+                };
+            }
+        }
+
+        if let Some(target) = top_level_structs
+            .iter()
+            .rev()
+            .find(|&target| target.name.symbol == item)
+        {
+            return target.def;
+        }
+
+        panic!("no struct '{}' found", item);
     }
 
     // NOTE: This function will not fill the stmt field of the parsed function. Caller must fill it.
@@ -587,14 +608,20 @@ impl Context {
                     Box::new(self.parse_expr(top_level_structs, scope, *lhs)),
                     self.parse_ty(top_level_structs, Some(scope), rhs),
                 ),
-                ExprKind::Object(lhs) => ParsedExprKind::Object(ParsedExprObject {
-                    name: lhs.name,
-                    fields: lhs
-                        .fields
-                        .into_iter()
-                        .map(|field| self.parse_object_field(top_level_structs, scope, field))
-                        .collect(),
-                    span: lhs.span,
+                ExprKind::Object(lhs) => ParsedExprKind::Object({
+                    let def =
+                        self.resolve_struct_ty(top_level_structs, Some(scope), lhs.name.symbol);
+                    ParsedExprObject {
+                        def,
+                        fields: lhs
+                            .fields
+                            .into_iter()
+                            .map(|field| {
+                                self.parse_object_field(top_level_structs, scope, def, field)
+                            })
+                            .collect(),
+                        span: lhs.span,
+                    }
                 }),
                 ExprKind::Call(lhs, rhs) => ParsedExprKind::Call(
                     Box::new(self.parse_expr(top_level_structs, scope, *lhs)),
@@ -624,6 +651,7 @@ impl Context {
         &self,
         top_level_structs: &[ParsedTopLevelStruct],
         scope: usize,
+        parent: usize,
         field: ObjectField,
     ) -> ParsedExprObjectField {
         ParsedExprObjectField {
@@ -632,16 +660,25 @@ impl Context {
                 ObjectFieldKind::Expr(expr) => {
                     ParsedExprObjectFieldKind::Expr(self.parse_expr(top_level_structs, scope, expr))
                 }
-                ObjectFieldKind::InnerObject(inner) => {
-                    ParsedExprObjectFieldKind::InnerObject(ParsedExprObjectFieldInnerObject {
+                ObjectFieldKind::InnerObject(inner) => ParsedExprObjectFieldKind::InnerObject({
+                    let def = self
+                        .inner_structs
+                        .get(&(parent, field.name.symbol))
+                        .cloned()
+                        .unwrap();
+
+                    ParsedExprObjectFieldInnerObject {
+                        def,
                         fields: inner
                             .fields
                             .into_iter()
-                            .map(|field| self.parse_object_field(top_level_structs, scope, field))
+                            .map(|field| {
+                                self.parse_object_field(top_level_structs, scope, def, field)
+                            })
                             .collect(),
                         span: inner.span,
-                    })
-                }
+                    }
+                }),
             },
             span: field.span,
         }
@@ -1081,7 +1118,7 @@ pub enum ParsedExprKind {
 
 #[derive(Debug)]
 pub struct ParsedExprObject {
-    pub name: SymbolWithSpan,
+    pub def: usize,
     pub fields: Vec<ParsedExprObjectField>,
     pub span: Span,
 }
@@ -1101,6 +1138,7 @@ pub enum ParsedExprObjectFieldKind {
 
 #[derive(Debug)]
 pub struct ParsedExprObjectFieldInnerObject {
+    pub def: usize,
     pub fields: Vec<ParsedExprObjectField>,
     pub span: Span,
 }
