@@ -1,5 +1,6 @@
 
-use mod;
+extern fn print(cptr str);
+extern fn println(cptr str);
 
 fn main() {
 	println("Hello, world!");
