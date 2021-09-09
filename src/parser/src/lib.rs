@@ -31,38 +31,76 @@ fn parse_top_level(
 ) -> Result<TopLevel, (String, Span)> {
     if parser.expect_keyword(USE) {
         parser.expect_begin();
-        let u = parse_use(parser)?;
+        let item = parse_use(parser)?;
         Ok(TopLevel {
-            span: u.span.to(parser.span()),
-            kind: TopLevelKind::Use(u),
+            span: item.span.to(parser.span()),
+            kind: TopLevelKind::Use(item),
         })
-    } else if parser.expect_keyword(PUB) {
-        let vis = Vis {
-            kind: VisKind::Pub,
+    } else if parser.expect_keyword(EXTERN) {
+        let prefix = TopLevelItemPrefix {
+            kind: TopLevelItemPrefixKind::Extern(Extern {
+                kind: ExternKind::Extern,
+                span: parser.span(),
+            }),
             span: parser.span(),
         };
 
         parser.expect_begin();
         if parser.expect_keyword(STRUCT) {
             parser.expect_begin();
-            let s = parse_struct(parser)?;
+            let item = parse_struct(parser)?;
             Ok(TopLevel {
-                span: vis.span.to(s.span),
+                span: prefix.span.to(item.span),
                 kind: TopLevelKind::Struct(TopLevelItem {
-                    span: vis.span.to(s.span),
-                    vis: Some(vis),
-                    item: s,
+                    span: prefix.span.to(item.span),
+                    prefix: Some(prefix),
+                    item,
                 }),
             })
         } else if parser.expect_keyword(FN) {
             parser.expect_begin();
-            let f = parse_fn(parser)?;
+            let item = parse_fn(parser)?;
             Ok(TopLevel {
-                span: vis.span.to(f.span),
+                span: prefix.span.to(item.span),
                 kind: TopLevelKind::Fn(TopLevelItem {
-                    span: vis.span.to(f.span),
-                    vis: Some(vis),
-                    item: f,
+                    span: prefix.span.to(item.span),
+                    prefix: Some(prefix),
+                    item,
+                }),
+            })
+        } else {
+            Err(parser.expect_else())
+        }
+    } else if parser.expect_keyword(PUB) {
+        let prefix = TopLevelItemPrefix {
+            kind: TopLevelItemPrefixKind::Vis(Vis {
+                kind: VisKind::Pub,
+                span: parser.span(),
+            }),
+            span: parser.span(),
+        };
+
+        parser.expect_begin();
+        if parser.expect_keyword(STRUCT) {
+            parser.expect_begin();
+            let item = parse_struct(parser)?;
+            Ok(TopLevel {
+                span: prefix.span.to(item.span),
+                kind: TopLevelKind::Struct(TopLevelItem {
+                    span: prefix.span.to(item.span),
+                    prefix: Some(prefix),
+                    item,
+                }),
+            })
+        } else if parser.expect_keyword(FN) {
+            parser.expect_begin();
+            let item = parse_fn(parser)?;
+            Ok(TopLevel {
+                span: prefix.span.to(item.span),
+                kind: TopLevelKind::Fn(TopLevelItem {
+                    span: prefix.span.to(item.span),
+                    prefix: Some(prefix),
+                    item,
                 }),
             })
         } else {
@@ -70,24 +108,24 @@ fn parse_top_level(
         }
     } else if parser.expect_keyword(STRUCT) {
         parser.expect_begin();
-        let s = parse_struct(parser)?;
+        let item = parse_struct(parser)?;
         Ok(TopLevel {
-            span: s.span,
+            span: item.span,
             kind: TopLevelKind::Struct(TopLevelItem {
-                span: s.span,
-                vis: None,
-                item: s,
+                span: item.span,
+                prefix: None,
+                item,
             }),
         })
     } else if parser.expect_keyword(FN) {
         parser.expect_begin();
-        let f = parse_fn(parser)?;
+        let item = parse_fn(parser)?;
         Ok(TopLevel {
-            span: f.span,
+            span: item.span,
             kind: TopLevelKind::Fn(TopLevelItem {
-                span: f.span,
-                vis: None,
-                item: f,
+                span: item.span,
+                prefix: None,
+                item,
             }),
         })
     } else {

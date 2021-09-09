@@ -23,15 +23,38 @@ pub enum TopLevelKind {
 
 #[derive(Debug, Clone, Hash)]
 pub struct TopLevelItem<T> {
-    pub vis: Option<Vis>,
+    pub prefix: Option<TopLevelItemPrefix>,
     pub item: T,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TopLevelItemPrefix {
+    pub kind: TopLevelItemPrefixKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TopLevelItemPrefixKind {
+    Extern(Extern),
+    Vis(Vis),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SymbolWithSpan {
     pub symbol: Symbol,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Extern {
+    pub kind: ExternKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExternKind {
+    Extern,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

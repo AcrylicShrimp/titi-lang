@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "ast"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "high_lexer",
  "span",
