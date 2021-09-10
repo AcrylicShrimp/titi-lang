@@ -88,6 +88,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir"
+version = "0.0.1"
+dependencies = [
+ "ast",
+ "diagnostic",
+ "high_lexer",
+ "span",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -233,6 +243,7 @@ dependencies = [
  "clap",
  "diagnostic",
  "high_lexer",
+ "hir",
  "interpreter",
  "parser",
  "span",
