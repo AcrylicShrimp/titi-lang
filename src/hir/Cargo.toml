@@ -10,4 +10,5 @@ edition = "2018"
 ast = { path = "../ast" }
 diagnostic = { path = "../diagnostic", features = ["global_instance"] }
 high_lexer = { path = "../high_lexer" }
+parser = { path = "../parser" }
 span = { path = "../span" }

@@ -212,9 +212,37 @@ fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (Str
             kind: TyKind::Mptr(Box::new(ty)),
         });
     } else if let Some(id) = parser.expect_id() {
-        Ty {
-            kind: TyKind::Struct(id),
+        let id = SymbolWithSpan {
+            symbol: id,
             span: parser.span(),
+        };
+
+        if parser.expect_kind(TokenKind::Dot) {
+            parser.expect_begin();
+            if let Some(item) = parser.expect_id() {
+                Ty {
+                    kind: TyKind::External(TyExternal {
+                        module: Some(id),
+                        item: SymbolWithSpan {
+                            symbol: item,
+                            span: parser.span(),
+                        },
+                        span: id.span.to(parser.span()),
+                    }),
+                    span: parser.span(),
+                }
+            } else {
+                return Err(parser.expect_else());
+            }
+        } else {
+            Ty {
+                kind: TyKind::External(TyExternal {
+                    module: None,
+                    item: id,
+                    span: id.span,
+                }),
+                span: parser.span(),
+            }
         }
     } else {
         return Err(parser.expect_else());

@@ -1,11 +1,13 @@
+mod analysis;
+
 use ast::*;
 use high_lexer::Symbol;
-use span::{Source, Span};
-use std::collections::HashMap;
+use span::{Source, SourceMap, Span};
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct SymbolTable {
+    pub source_map: SourceMap,
     pub modules: Vec<ResolvedModule>,
     pub scope: Vec<GlobalScope>,
     pub structs: Vec<GlobalStruct>,
@@ -25,6 +27,8 @@ pub struct ResolvedModule {
     pub source: Arc<Source>,
     pub uses: Vec<ResolvedModuleUse>,
     pub structs: Vec<ResolvedModuleStruct>,
+    pub fns: Vec<ResolvedModuleFn>,
+    pub fn_headers: Vec<ResolvedModuleFnHeader>,
 }
 
 #[derive(Debug)]
@@ -38,6 +42,21 @@ pub struct ResolvedModuleUse {
 pub struct ResolvedModuleStruct {
     pub name: SymbolWithSpan,
     pub prefix: Option<TopLevelItemPrefix>,
+    pub def: usize,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct ResolvedModuleFn {
+    pub name: SymbolWithSpan,
+    pub prefix: Option<TopLevelItemPrefix>,
+    pub def: usize,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct ResolvedModuleFnHeader {
+    pub name: SymbolWithSpan,
     pub def: usize,
     pub span: Span,
 }

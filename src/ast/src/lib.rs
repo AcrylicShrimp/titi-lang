@@ -94,7 +94,14 @@ pub enum TyKind {
     Str,
     Cptr(Box<Ty>),
     Mptr(Box<Ty>),
-    Struct(Symbol),
+    External(TyExternal),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TyExternal {
+    pub module: Option<SymbolWithSpan>,
+    pub item: SymbolWithSpan,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Hash)]

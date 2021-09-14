@@ -164,12 +164,12 @@ impl Context {
                 TyKind::Mptr(ty) => {
                     ParsedTyKind::Mptr(Box::new(self.parse_ty(top_level_structs, scope, *ty)))
                 }
-                TyKind::Struct(item) => {
+                TyKind::External(item) => {
                     return ParsedTy {
                         kind: ParsedTyKind::Struct(self.resolve_struct_ty(
                             top_level_structs,
                             scope,
-                            item,
+                            item.item.symbol,
                         )),
                         span: ty.span,
                     };
