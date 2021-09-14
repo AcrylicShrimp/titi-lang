@@ -14,12 +14,7 @@ pub struct SymbolTable {
     pub inner_structs: Vec<GlobalInnerStruct>,
     pub fns: Vec<GlobalFn>,
     pub fn_headers: Vec<FnHeader>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InnerStructKey {
-    pub parent: usize,
-    pub field: Symbol,
+    pub types: Vec<GlobalTy>,
 }
 
 #[derive(Debug)]
@@ -94,13 +89,12 @@ pub struct GlobalStructField {
 
 #[derive(Debug)]
 pub enum GlobalStructFieldKind {
-    Plain(Ty),
+    Plain(usize),
     Struct(usize),
 }
 
 #[derive(Debug)]
 pub struct GlobalInnerStruct {
-    // TODO: Add source or module to represent its origin
     pub fields: Vec<GlobalInnerStructField>,
     pub span: Span,
 }
@@ -114,10 +108,41 @@ pub struct GlobalInnerStructField {
 
 #[derive(Debug)]
 pub struct GlobalFn {
-    // TODO: Add source or module to represent its origin
-    pub header: FnHeader,
+    pub header: GlobalFnHeader,
     pub body: ScopeBlock,
     pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalFnHeader {
+    pub name: SymbolWithSpan,
+    pub params: Vec<GlobalFnParam>,
+    pub return_ty: Option<usize>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalFnParam {
+    pub name: SymbolWithSpan,
+    pub ty: usize,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalTy {
+    Bool,
+    Char,
+    I64,
+    U64,
+    Isize,
+    Usize,
+    F64,
+    Str,
+    Mptr(usize),
+    Cptr(usize),
+    Struct(usize),
+    Fn(usize),
+    FnHeader(usize),
 }
 
 #[derive(Debug)]
