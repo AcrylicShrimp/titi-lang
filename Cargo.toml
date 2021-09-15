@@ -15,3 +15,5 @@ hir = { path = "src/hir" }
 interpreter = { path = "src/interpreter" }
 parser = { path = "src/parser" }
 span = { path = "src/span" }
+
+[workspace]

@@ -1,4 +1,6 @@
 mod cursor;
+#[cfg(test)]
+mod test;
 mod token;
 
 pub use token::*;

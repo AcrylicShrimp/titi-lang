@@ -1,10 +1,10 @@
 mod cursor;
 mod parser;
 
+use crate::parser::*;
 use ast::*;
 use cursor::*;
 use high_lexer::*;
-use parser::*;
 use span::{Source, Span};
 use std::sync::Arc;
 
