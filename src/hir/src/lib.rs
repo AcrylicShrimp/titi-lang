@@ -1,9 +1,37 @@
 mod analysis;
 
+pub use analysis::*;
+
 use ast::*;
-use high_lexer::Symbol;
 use span::{Source, SourceMap, Span};
 use std::sync::Arc;
+
+#[derive(Debug)]
+pub struct ResolvedType {
+    pub kind: ResolvedTypeKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum ResolvedTypeKind {
+    Bool,
+    Byte,
+    Char,
+    I64,
+    U64,
+    Isize,
+    Usize,
+    F64,
+    Str,
+    Cptr(Box<ResolvedType>),
+    Mptr(Box<ResolvedType>),
+    Range,
+    RangeEq,
+    Struct(usize),
+    InnerStruct(usize),
+    Fn(usize),
+    FnHeader(usize),
+}
 
 #[derive(Debug)]
 pub struct SymbolTable {
@@ -58,17 +86,16 @@ pub struct ResolvedModuleFnHeader {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    pub kind: ScopeKind,
+    pub kind: Option<ScopeKind>,
     pub parent: Option<usize>,
 }
 
 #[derive(Debug)]
 pub enum ScopeKind {
-    Block,
-    For(For),
     Struct(ScopeStruct),
     Fn(ScopeFn),
     Let(ScopeLet),
+    For(ScopeFor),
 }
 
 #[derive(Debug)]
@@ -160,8 +187,15 @@ pub struct ScopeFn {
 #[derive(Debug)]
 pub struct ScopeLet {
     pub name: SymbolWithSpan,
-    pub kind: LetKind,
+    pub kind: ScopeLetKind,
     pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum ScopeLetKind {
+    Ty(usize),
+    Expr(Expr),
+    TyExpr(usize, Expr),
 }
 
 #[derive(Debug)]
@@ -207,6 +241,7 @@ pub struct ScopeStmt {
 #[derive(Debug)]
 pub enum ScopeStmtKind {
     Scope(usize),
+    Block(ScopeBlock),
     If(ScopeIf),
     Break(Break),
     Continue(Continue),
