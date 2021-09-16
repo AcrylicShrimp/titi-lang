@@ -14,6 +14,7 @@ pub struct ResolvedType {
 
 #[derive(Debug)]
 pub enum ResolvedTypeKind {
+    None,
     Bool,
     Byte,
     Char,
@@ -47,6 +48,7 @@ pub struct SymbolTable {
 
 #[derive(Debug)]
 pub struct ResolvedModule {
+    pub def: usize,
     pub source: Arc<Source>,
     pub uses: Vec<ResolvedModuleUse>,
     pub structs: Vec<ResolvedModuleStruct>,
@@ -86,6 +88,7 @@ pub struct ResolvedModuleFnHeader {
 
 #[derive(Debug)]
 pub struct GlobalScope {
+    pub module: usize,
     pub kind: Option<ScopeKind>,
     pub parent: Option<usize>,
 }

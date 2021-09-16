@@ -37,11 +37,8 @@ fn parse_top_level(
             kind: TopLevelKind::Use(item),
         })
     } else if parser.expect_keyword(EXTERN) {
-        let prefix = TopLevelItemPrefix {
-            kind: TopLevelItemPrefixKind::Extern(Extern {
-                kind: ExternKind::Extern,
-                span: parser.span(),
-            }),
+        let ext = Extern {
+            kind: ExternKind::Extern,
             span: parser.span(),
         };
 
@@ -49,11 +46,15 @@ fn parse_top_level(
         if parser.expect_keyword(STRUCT) {
             parser.expect_begin();
             let item = parse_struct(parser)?;
+
             Ok(TopLevel {
-                span: prefix.span.to(item.span),
+                span: ext.span.to(item.span),
                 kind: TopLevelKind::Struct(TopLevelItem {
-                    span: prefix.span.to(item.span),
-                    prefix: Some(prefix),
+                    span: ext.span.to(item.span),
+                    prefix: Some(TopLevelItemPrefix {
+                        span: ext.span,
+                        kind: TopLevelItemPrefixKind::Extern(ext),
+                    }),
                     item,
                 }),
             })
@@ -64,9 +65,10 @@ fn parse_top_level(
             parser.expect_begin();
             if parser.expect_kind(TokenKind::Semicolon) {
                 Ok(TopLevel {
-                    span: prefix.span.to(parser.span()),
+                    span: ext.span.to(parser.span()),
                     kind: TopLevelKind::FnHeader(TopLevelFnHeader {
-                        span: prefix.span.to(header.span),
+                        span: ext.span.to(header.span),
+                        ext,
                         header,
                     }),
                 })
@@ -75,10 +77,13 @@ fn parse_top_level(
                 let body = parse_block(parser)?;
 
                 Ok(TopLevel {
-                    span: prefix.span.to(body.span),
+                    span: ext.span.to(body.span),
                     kind: TopLevelKind::Fn(TopLevelItem {
-                        span: prefix.span.to(body.span),
-                        prefix: Some(prefix),
+                        span: ext.span.to(body.span),
+                        prefix: Some(TopLevelItemPrefix {
+                            span: ext.span,
+                            kind: TopLevelItemPrefixKind::Extern(ext),
+                        }),
                         item: Fn {
                             span: header.span.to(body.span),
                             header,

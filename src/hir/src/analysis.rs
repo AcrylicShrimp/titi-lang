@@ -6,8 +6,15 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum ScopeRef {
+    Module(usize),
+    Scope(usize),
+}
+
+#[derive(Debug, Clone, Hash)]
 struct TyRef {
-    scope: Option<usize>,
+    scope: ScopeRef,
     ty: Ty,
 }
 
@@ -46,6 +53,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
 
         for module in modules {
             let mut resolved = ResolvedModule {
+                def: resolved_modules.len(),
                 source: module.source.clone(),
                 uses: vec![],
                 structs: vec![],
@@ -156,7 +164,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                             def: structs.len(),
                             span: item.span,
                         });
-                        structs.push(item.item);
+                        structs.push((resolved.def, item.item));
                     }
                     TopLevelKind::Fn(item) => {
                         for previous_item in &resolved.structs {
@@ -213,7 +221,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                             def: fns.len(),
                             span: item.span,
                         });
-                        fns.push(item.item);
+                        fns.push((resolved.def, item.item));
                     }
                     TopLevelKind::FnHeader(item) => {
                         for previous_item in &resolved.structs {
@@ -269,7 +277,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                             def: fn_headers.len(),
                             span: item.span,
                         });
-                        fn_headers.push(item.header);
+                        fn_headers.push((resolved.def, item.header));
                     }
                 }
             }
@@ -290,17 +298,24 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
     let mut global_inner_structs = vec![];
     let mut global_structs = structs
         .into_iter()
-        .map(|item| to_scope_struct(None, &mut global_types, &mut global_inner_structs, item))
+        .map(|(module, item)| {
+            to_scope_struct(
+                ScopeRef::Module(module),
+                &mut global_types,
+                &mut global_inner_structs,
+                item,
+            )
+        })
         .collect::<Vec<_>>();
     let mut global_fns = vec![];
     let mut global_fn_headers = fn_headers
         .into_iter()
-        .map(|item| to_scope_fn_header(&mut global_types, item))
+        .map(|(module, item)| to_scope_fn_header(ScopeRef::Module(module), &mut global_types, item))
         .collect::<Vec<_>>();
 
-    for item in fns {
+    for (module, item) in fns {
         let item = to_scope_fn(
-            None,
+            ScopeRef::Module(module),
             &mut global_types,
             &mut global_scopes,
             &mut global_structs,
@@ -315,6 +330,11 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
         .into_iter()
         .map(|item| {
             resolve_ty(
+                match item.scope {
+                    ScopeRef::Module(def) => &resolved_modules[def],
+                    ScopeRef::Scope(def) => &resolved_modules[global_scopes[def].module],
+                },
+                &resolved_modules,
                 &global_scopes,
                 &global_structs,
                 &global_inner_structs,
@@ -346,6 +366,8 @@ fn use_to_path(source: &Source, item: &Use) -> Option<PathBuf> {
 }
 
 fn resolve_ty(
+    module: &ResolvedModule,
+    modules: &[ResolvedModule],
     scopes: &[GlobalScope],
     structs: &[GlobalStruct],
     inner_structs: &[GlobalInnerStruct],
@@ -365,6 +387,8 @@ fn resolve_ty(
             TyKind::F64 => ResolvedTypeKind::F64,
             TyKind::Str => ResolvedTypeKind::Str,
             TyKind::Cptr(inner) => ResolvedTypeKind::Cptr(Box::new(resolve_ty(
+                module,
+                modules,
                 scopes,
                 structs,
                 inner_structs,
@@ -376,6 +400,8 @@ fn resolve_ty(
                 },
             ))),
             TyKind::Mptr(inner) => ResolvedTypeKind::Cptr(Box::new(resolve_ty(
+                module,
+                modules,
                 scopes,
                 structs,
                 inner_structs,
@@ -387,12 +413,73 @@ fn resolve_ty(
                 },
             ))),
             TyKind::External(inner) => {
-                if let Some(module) = inner.module {
-                    // TODO: Resolve the external module's pub type.
-                    todo!()
+                if let Some(external) = inner.module {
+                    if let Some(use_index) = module
+                        .uses
+                        .iter()
+                        .position(|item| item.name.symbol == external.symbol)
+                    {
+                        let external = &modules[use_index];
+
+                        if let Some(index) = external
+                            .structs
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let external = &external.structs[index];
+
+                            if external.prefix.is_none() {
+                                panic!("that struct is not pub");
+                            }
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Struct(external.def),
+                                span: external.span,
+                            };
+                        }
+
+                        if let Some(index) = external
+                            .fns
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let external = &external.fns[index];
+
+                            if external.prefix.is_none() {
+                                panic!("that struct is not pub");
+                            }
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Fn(external.def),
+                                span: external.span,
+                            };
+                        }
+
+                        if let Some(index) = external
+                            .fn_headers
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let external = &external.fn_headers[index];
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Fn(external.def),
+                                span: external.span,
+                            };
+                        }
+
+                        panic!("could not find use for external");
+                    } else {
+                        // TODO: Report a diagnostic instead of paniking.
+                        panic!("could not find use for external");
+                    }
                 } else {
                     let mut ty = None;
                     let mut scope = item.scope;
+                    let (module, mut scope) = match item.scope {
+                        ScopeRef::Module(def) => (def, None),
+                        ScopeRef::Scope(def) => (scopes[def].module, Some(def)),
+                    };
 
                     while let Some(index) = scope {
                         if let Some(kind) = &scopes[index].kind {
@@ -423,8 +510,56 @@ fn resolve_ty(
                     if let Some(ty) = ty {
                         ty
                     } else {
-                        // TODO: Search for the type in the global of the module.
-                        todo!()
+                        let module = &modules[module];
+
+                        if let Some(index) = module
+                            .structs
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let global = &module.structs[index];
+
+                            if global.prefix.is_none() {
+                                panic!("that struct is not pub");
+                            }
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Struct(global.def),
+                                span: global.span,
+                            };
+                        }
+
+                        if let Some(index) = module
+                            .fns
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let global = &module.fns[index];
+
+                            if global.prefix.is_none() {
+                                panic!("that struct is not pub");
+                            }
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Fn(global.def),
+                                span: global.span,
+                            };
+                        }
+
+                        if let Some(index) = module
+                            .fn_headers
+                            .iter()
+                            .position(|item| item.name.symbol == inner.item.symbol)
+                        {
+                            let global = &module.fn_headers[index];
+
+                            return ResolvedType {
+                                kind: ResolvedTypeKind::Fn(global.def),
+                                span: global.span,
+                            };
+                        }
+
+                        panic!("could not find use for global");
                     }
                 }
             }
@@ -434,7 +569,7 @@ fn resolve_ty(
 }
 
 fn to_scope_struct(
-    scope: Option<usize>,
+    scope: ScopeRef,
     types: &mut Vec<TyRef>,
     inner_structs: &mut Vec<GlobalInnerStruct>,
     item: Struct,
@@ -465,7 +600,7 @@ fn to_scope_struct(
 }
 
 fn to_scope_inner_struct(
-    scope: Option<usize>,
+    scope: ScopeRef,
     types: &mut Vec<TyRef>,
     inner_structs: &mut Vec<GlobalInnerStruct>,
     item: InnerStruct,
@@ -497,7 +632,7 @@ fn to_scope_inner_struct(
 }
 
 fn to_scope_fn(
-    scope: Option<usize>,
+    scope: ScopeRef,
     types: &mut Vec<TyRef>,
     scopes: &mut Vec<GlobalScope>,
     structs: &mut Vec<GlobalStruct>,
@@ -506,13 +641,21 @@ fn to_scope_fn(
     item: Fn,
 ) -> usize {
     let inner_scope = scopes.len();
-    scopes.push(GlobalScope {
-        kind: None,
-        parent: scope,
+    scopes.push(match scope {
+        ScopeRef::Module(def) => GlobalScope {
+            module: def,
+            kind: None,
+            parent: None,
+        },
+        ScopeRef::Scope(def) => GlobalScope {
+            module: scopes[def].module,
+            kind: None,
+            parent: Some(def),
+        },
     });
 
     let item = GlobalFn {
-        header: to_scope_fn_header(types, item.header),
+        header: to_scope_fn_header(scope, types, item.header),
         body: to_scope_block(
             inner_scope,
             types,
@@ -535,7 +678,7 @@ fn to_scope_fn(
     def
 }
 
-fn to_scope_fn_header(types: &mut Vec<TyRef>, item: FnHeader) -> GlobalFnHeader {
+fn to_scope_fn_header(scope: ScopeRef, types: &mut Vec<TyRef>, item: FnHeader) -> GlobalFnHeader {
     GlobalFnHeader {
         name: item.name,
         params: item
@@ -544,7 +687,7 @@ fn to_scope_fn_header(types: &mut Vec<TyRef>, item: FnHeader) -> GlobalFnHeader 
             .map(|param| {
                 let index = types.len();
                 types.push(TyRef {
-                    scope: None,
+                    scope,
                     ty: param.ty,
                 });
                 GlobalFnParam {
@@ -556,7 +699,7 @@ fn to_scope_fn_header(types: &mut Vec<TyRef>, item: FnHeader) -> GlobalFnHeader 
             .collect(),
         return_ty: if let Some(ty) = item.return_ty {
             let index = types.len();
-            types.push(TyRef { scope: None, ty });
+            types.push(TyRef { scope, ty });
             Some(index)
         } else {
             None
@@ -575,6 +718,7 @@ fn to_scope_block(
     item: Block,
 ) -> ScopeBlock {
     let mut scope = scope;
+    let module = scopes[scope].module;
 
     ScopeBlock {
         stmts: item
@@ -585,13 +729,19 @@ fn to_scope_block(
                     StmtKind::Struct(item) => {
                         let new_scope = scopes.len();
                         scopes.push(GlobalScope {
+                            module,
                             kind: Some(ScopeKind::Struct(ScopeStruct {
                                 name: item.name,
                                 def: structs.len(),
                             })),
                             parent: Some(scope),
                         });
-                        structs.push(to_scope_struct(Some(scope), types, inner_structs, item));
+                        structs.push(to_scope_struct(
+                            ScopeRef::Scope(new_scope),
+                            types,
+                            inner_structs,
+                            item,
+                        ));
 
                         scope = new_scope;
                         ScopeStmtKind::Scope(new_scope)
@@ -599,7 +749,7 @@ fn to_scope_block(
                     StmtKind::Fn(item) => {
                         let name = item.header.name;
                         let def = to_scope_fn(
-                            Some(scope),
+                            ScopeRef::Scope(scope),
                             types,
                             scopes,
                             structs,
@@ -610,6 +760,7 @@ fn to_scope_block(
 
                         let new_scope = scopes.len();
                         scopes.push(GlobalScope {
+                            module,
                             kind: Some(ScopeKind::Fn(ScopeFn { name, def })),
                             parent: Some(scope),
                         });
@@ -620,6 +771,7 @@ fn to_scope_block(
                     StmtKind::Let(item) => {
                         let new_scope = scopes.len();
                         scopes.push(GlobalScope {
+                            module,
                             kind: Some(ScopeKind::Let(ScopeLet {
                                 name: item.name,
                                 kind: match item.kind {
@@ -661,6 +813,7 @@ fn to_scope_block(
                     StmtKind::For(item) => {
                         let new_scope = scopes.len();
                         scopes.push(GlobalScope {
+                            module,
                             kind: None,
                             parent: Some(scope),
                         });

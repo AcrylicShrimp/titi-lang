@@ -31,6 +31,7 @@ pub struct TopLevelItem<T> {
 
 #[derive(Debug, Clone, Hash)]
 pub struct TopLevelFnHeader {
+    pub ext: Extern,
     pub header: FnHeader,
     pub span: Span,
 }
