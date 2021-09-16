@@ -32,6 +32,7 @@ pub enum ResolvedTypeKind {
     InnerStruct(usize),
     Fn(usize),
     FnHeader(usize),
+    Let(usize),
 }
 
 #[derive(Debug)]
@@ -43,6 +44,8 @@ pub struct SymbolTable {
     pub inner_structs: Vec<GlobalInnerStruct>,
     pub fns: Vec<GlobalFn>,
     pub fn_headers: Vec<FnHeader>,
+    pub lets: Vec<GlobalLet>,
+    pub exprs: Vec<GlobalExpr>,
     pub types: Vec<GlobalTy>,
 }
 
@@ -103,7 +106,6 @@ pub enum ScopeKind {
 
 #[derive(Debug)]
 pub struct GlobalStruct {
-    // TODO: Add source or module to represent its origin
     pub name: SymbolWithSpan,
     pub fields: Vec<GlobalStructField>,
     pub span: Span,
@@ -159,6 +161,98 @@ pub struct GlobalFnParam {
 }
 
 #[derive(Debug)]
+pub struct GlobalLet {
+    pub name: SymbolWithSpan,
+    pub kind: GlobalLetKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalLetKind {
+    Ty(usize),
+    Expr(usize),
+    TyExpr(usize, usize),
+}
+
+#[derive(Debug)]
+pub struct GlobalExpr {
+    pub kind: GlobalExprKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalExprKind {
+    Assign(usize, usize),
+    AssignAdd(usize, usize),
+    AssignSub(usize, usize),
+    AssignMul(usize, usize),
+    AssignDiv(usize, usize),
+    AssignMod(usize, usize),
+    AssignShl(usize, usize),
+    AssignShr(usize, usize),
+    AssignBitOr(usize, usize),
+    AssignBitAnd(usize, usize),
+    AssignBitXor(usize, usize),
+    AssignBitNot(usize, usize),
+    Rng(usize, usize),
+    RngInclusive(usize, usize),
+    Eq(usize, usize),
+    Ne(usize, usize),
+    Lt(usize, usize),
+    Gt(usize, usize),
+    Le(usize, usize),
+    Ge(usize, usize),
+    Neg(usize),
+    Add(usize, usize),
+    Sub(usize, usize),
+    Mul(usize, usize),
+    Div(usize, usize),
+    Mod(usize, usize),
+    Shl(usize, usize),
+    Shr(usize, usize),
+    BitOr(usize, usize),
+    BitAnd(usize, usize),
+    BitXor(usize, usize),
+    BitNot(usize),
+    LogOr(usize, usize),
+    LogAnd(usize, usize),
+    LogNot(usize),
+    Cast(usize, usize),
+    Object(GlobalObject),
+    Call(usize, Vec<usize>),
+    Index(usize, usize),
+    Member(usize, SymbolWithSpan),
+    Id(SymbolWithSpan),
+    Literal(Literal),
+}
+
+#[derive(Debug)]
+pub struct GlobalObject {
+    pub name: SymbolWithSpan,
+    pub fields: Vec<GlobalObjectField>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalObjectField {
+    pub name: SymbolWithSpan,
+    pub kind: GlobalObjectFieldKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalObjectFieldKind {
+    Expr(usize),
+    InnerObject(GlobalInnerObject),
+}
+
+#[derive(Debug)]
+pub struct GlobalInnerObject {
+    pub fields: Vec<GlobalObjectField>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
 pub enum GlobalTy {
     Bool,
     Char,
@@ -190,15 +284,7 @@ pub struct ScopeFn {
 #[derive(Debug)]
 pub struct ScopeLet {
     pub name: SymbolWithSpan,
-    pub kind: ScopeLetKind,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub enum ScopeLetKind {
-    Ty(usize),
-    Expr(Expr),
-    TyExpr(usize, Expr),
+    pub def: usize,
 }
 
 #[derive(Debug)]
@@ -225,8 +311,8 @@ pub struct ScopeFor {
 #[derive(Debug)]
 pub enum ScopeForKind {
     Loop,
-    While(Expr),
-    ForIn(SymbolWithSpan, Expr),
+    While(usize),
+    ForIn(SymbolWithSpan, usize),
 }
 
 #[derive(Debug)]
@@ -249,5 +335,5 @@ pub enum ScopeStmtKind {
     Break(Break),
     Continue(Continue),
     Return(Return),
-    Expr(Expr),
+    Expr(usize),
 }

@@ -1,11 +1,20 @@
 
-extern fn print(cptr str);
-extern fn println(cptr str);
+use next;
+
+extern fn print(format cptr str);
+extern fn println(format cptr str);
+
+struct A {}
 
 fn main() {
+	let a A = A {};
+	let foo next.Foo = next.Foo {
+
+	};
 	println("Hello, world!");
 }
 
 fn main() {
+	main();
 	println("Hello, world!");
 }

@@ -1362,6 +1362,41 @@ fn parse_expr_object(
                     fields: inner_object.fields,
                 }),
             })
+        } else if parser.expect_kind(TokenKind::Dot) {
+            parser.expect_begin();
+            if let Some(next_id) = parser.expect_id() {
+                let next_name = SymbolWithSpan {
+                    symbol: next_id,
+                    span: parser.span(),
+                };
+
+                parser.expect_begin();
+                if parser.expect_kind(TokenKind::OpenBrace) {
+                    let inner_object = parse_expr_inner_object(parser)?;
+
+                    Ok(Expr {
+                        span: name.span.to(inner_object.span),
+                        kind: ExprKind::Object(Object {
+                            span: name.span.to(inner_object.span),
+                            name,
+                            fields: inner_object.fields,
+                        }),
+                    })
+                } else {
+                    Ok(Expr {
+                        span: name.span.to(parser.span()),
+                        kind: ExprKind::Member(
+                            Box::new(item),
+                            SymbolWithSpan {
+                                symbol: id,
+                                span: parser.span(),
+                            },
+                        ),
+                    })
+                }
+            } else {
+                return Err(parser.expect_else());
+            }
         } else {
             Ok(Expr {
                 span: name.span,

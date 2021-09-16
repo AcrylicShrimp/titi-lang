@@ -305,7 +305,7 @@ pub enum ExprKind {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Object {
-    pub name: SymbolWithSpan,
+    pub ty: TyExternal,
     pub fields: Vec<ObjectField>,
     pub span: Span,
 }
