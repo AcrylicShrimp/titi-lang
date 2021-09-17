@@ -8,6 +8,9 @@ struct A {}
 
 fn main() {
 	let a A = A {};
+	a.bcd;
+	a.b.c.fdsa;
+	print(a.b);
 	let foo next.Foo = next.Foo {
 
 	};
