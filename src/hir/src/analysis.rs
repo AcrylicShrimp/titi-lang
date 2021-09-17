@@ -1010,7 +1010,17 @@ fn to_global_object(
     item: Object,
 ) -> GlobalObject {
     GlobalObject {
-        name: item.name,
+        ty: {
+            let def = types.len();
+            types.push(TyRef {
+                scope: ScopeRef::Scope(scope),
+                ty: Ty {
+                    span: item.span,
+                    kind: TyKind::External(item.ty),
+                },
+            });
+            def
+        },
         fields: item
             .fields
             .into_iter()

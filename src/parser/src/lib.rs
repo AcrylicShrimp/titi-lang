@@ -1358,7 +1358,11 @@ fn parse_expr_object(
                 span: name.span.to(inner_object.span),
                 kind: ExprKind::Object(Object {
                     span: name.span.to(inner_object.span),
-                    name,
+                    ty: TyExternal {
+                        span: name.span,
+                        module: None,
+                        item: name,
+                    },
                     fields: inner_object.fields,
                 }),
             })
@@ -1378,19 +1382,23 @@ fn parse_expr_object(
                         span: name.span.to(inner_object.span),
                         kind: ExprKind::Object(Object {
                             span: name.span.to(inner_object.span),
-                            name,
+                            ty: TyExternal {
+                                span: name.span.to(next_name.span),
+                                module: Some(name),
+                                item: next_name,
+                            },
                             fields: inner_object.fields,
                         }),
                     })
                 } else {
                     Ok(Expr {
-                        span: name.span.to(parser.span()),
+                        span: name.span.to(next_name.span),
                         kind: ExprKind::Member(
-                            Box::new(item),
-                            SymbolWithSpan {
-                                symbol: id,
-                                span: parser.span(),
-                            },
+                            Box::new(Expr {
+                                span: name.span,
+                                kind: ExprKind::Id(name),
+                            }),
+                            next_name,
                         ),
                     })
                 }

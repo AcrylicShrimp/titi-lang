@@ -228,7 +228,7 @@ pub enum GlobalExprKind {
 
 #[derive(Debug)]
 pub struct GlobalObject {
-    pub name: SymbolWithSpan,
+    pub ty: usize,
     pub fields: Vec<GlobalObjectField>,
     pub span: Span,
 }

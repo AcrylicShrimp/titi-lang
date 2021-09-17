@@ -1,7 +1,5 @@
 use clap::{App, Arg};
-use high_lexer::MAIN;
 use hir::analyze_module;
-use interpreter::{init, Runtime};
 use std::path::PathBuf;
 
 fn main() {
