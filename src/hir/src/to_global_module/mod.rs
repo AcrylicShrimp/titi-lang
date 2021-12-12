@@ -1,155 +1,22 @@
-// mod analysis;
-mod resolve_module;
-mod to_global_module;
-// mod deduce;
-// mod lookup;
-// mod ops;
-
-// pub use analysis::*;
-// pub use deduce::*;
-// pub use lookup::*;
-
+use crate::{
+    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, LetDef, ModuleDef, ScopeDef,
+    StructDef, TyDef,
+};
 use ast::*;
-use span::{Source, SourceMap, Span};
-use std::sync::Arc;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ModuleDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ScopeDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StructDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InnerStructDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FunctionDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FunctionHeaderDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LetDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ExprDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TyDef(pub usize);
-
-#[derive(Debug, Clone, Hash)]
-pub struct TyRef {
-    pub scope: ScopeRef,
-    pub ty: Ty,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ScopeRef {
-    Module(ModuleDef),
-    Scope(ScopeDef),
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedType {
-    pub kind: ResolvedTypeKind,
-    pub addressable: bool,
-    pub assignable: bool,
-    pub ref_kind: Option<TyRefKind>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ResolvedTypeKind {
-    None,
-    Bool,
-    Byte,
-    Char,
-    I64,
-    U64,
-    Isize,
-    Usize,
-    F64,
-    Str,
-    Cptr(TyDef),
-    Mptr(TyDef),
-    Range(TyDef, TyDef),
-    RangeInclusive(TyDef, TyDef),
-    Struct(StructDef),
-    InnerStruct(InnerStructDef),
-    Fn(FunctionDef),
-    FnHeader(FunctionHeaderDef),
-    Let(LetDef),
-}
-
-#[derive(Debug)]
-pub struct SymbolTable {
-    pub source_map: SourceMap,
-    pub modules: Vec<ResolvedModule>,
-    pub scope: Vec<GlobalScope>,
-    pub structs: Vec<GlobalStruct>,
-    pub inner_structs: Vec<GlobalInnerStruct>,
-    pub fns: Vec<GlobalFn>,
-    pub fn_headers: Vec<FnHeader>,
-    pub lets: Vec<GlobalLet>,
-    pub exprs: Vec<GlobalExpr>,
-    pub types: Vec<GlobalTy>,
-}
-
-#[derive(Debug)]
-pub struct ResolvedModule {
-    pub def: ModuleDef,
-    pub source: Arc<Source>,
-    pub uses: Vec<ResolvedModuleUse>,
-    pub structs: Vec<ResolvedModuleStruct>,
-    pub fns: Vec<ResolvedModuleFn>,
-    pub fn_headers: Vec<ResolvedModuleFnHeader>,
-}
-
-#[derive(Debug)]
-pub struct ResolvedModuleUse {
-    pub name: SymbolWithSpan,
-    pub def: ModuleDef,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct ResolvedModuleStruct {
-    pub name: SymbolWithSpan,
-    pub prefix: Option<TopLevelItemPrefix>,
-    pub def: StructDef,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct ResolvedModuleFn {
-    pub name: SymbolWithSpan,
-    pub prefix: Option<TopLevelItemPrefix>,
-    pub def: FunctionDef,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct ResolvedModuleFnHeader {
-    pub name: SymbolWithSpan,
-    pub def: FunctionHeaderDef,
-    pub span: Span,
-}
+use span::Span;
 
 #[derive(Debug)]
 pub struct GlobalScope {
     pub module: ModuleDef,
-    pub kind: Option<ScopeKind>,
+    pub kind: Option<GlobalScopeKind>,
     pub parent: Option<ScopeDef>,
 }
 
 #[derive(Debug)]
-pub enum ScopeKind {
-    Struct(ScopeStruct),
-    Fn(ScopeFn),
-    Let(ScopeLet),
+pub enum GlobalScopeKind {
+    Struct(StructDef),
+    Fn(FunctionDef),
+    Let(LetDef),
     For(ScopeFor),
 }
 

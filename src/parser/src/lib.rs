@@ -160,61 +160,133 @@ fn parse_top_level(
 }
 
 fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (String, Span)> {
+    parse_ty_next_ref(
+        if parser.expect_keyword(CREF) {
+            Some(TyRefKind::Cref)
+        } else if parser.expect_keyword(MREF) {
+            Some(TyRefKind::Mref)
+        } else {
+            None
+        },
+        parser,
+    )
+}
+
+fn parse_ty_next_ref(
+    ref_kind: Option<TyRefKind>,
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<Ty, (String, Span)> {
+    let span = if ref_kind.is_some() {
+        Some(parser.span())
+    } else {
+        None
+    };
+
     Ok(if parser.expect_keyword(BOOL) {
         Ty {
             kind: TyKind::Bool,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(CHAR) {
         Ty {
             kind: TyKind::Char,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(I64) {
         Ty {
             kind: TyKind::I64,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(U64) {
         Ty {
             kind: TyKind::U64,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(ISIZE) {
         Ty {
             kind: TyKind::Isize,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(USIZE) {
         Ty {
             kind: TyKind::Usize,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(F64) {
         Ty {
             kind: TyKind::F64,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(STR) {
         Ty {
             kind: TyKind::Str,
-            span: parser.span(),
+            ref_kind,
+            span: if let Some(span) = span {
+                span.to(parser.span())
+            } else {
+                parser.span()
+            },
         }
     } else if parser.expect_keyword(CPTR) {
-        let span = parser.span();
+        let span = if let Some(span) = span {
+            span.to(parser.span())
+        } else {
+            parser.span()
+        };
 
         parser.expect_begin();
         return parse_ty(parser).map(|ty| Ty {
             span: span.to(ty.span),
             kind: TyKind::Cptr(Box::new(ty)),
+            ref_kind,
         });
     } else if parser.expect_keyword(MPTR) {
-        let span = parser.span();
+        let span = if let Some(span) = span {
+            span.to(parser.span())
+        } else {
+            parser.span()
+        };
 
         parser.expect_begin();
         return parse_ty(parser).map(|ty| Ty {
             span: span.to(ty.span),
             kind: TyKind::Mptr(Box::new(ty)),
+            ref_kind,
         });
     } else if let Some(id) = parser.expect_id() {
         let id = SymbolWithSpan {
@@ -225,28 +297,43 @@ fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (Str
         if parser.expect_kind(TokenKind::Dot) {
             parser.expect_begin();
             if let Some(item) = parser.expect_id() {
+                let inner_span = id.span.to(parser.span());
+                let span = if let Some(span) = span {
+                    span.to(inner_span)
+                } else {
+                    inner_span
+                };
+
                 Ty {
-                    kind: TyKind::External(TyExternal {
+                    kind: TyKind::UserDef(TyUserDef {
                         module: Some(id),
-                        item: SymbolWithSpan {
+                        id: SymbolWithSpan {
                             symbol: item,
                             span: parser.span(),
                         },
-                        span: id.span.to(parser.span()),
+                        span: inner_span,
                     }),
-                    span: parser.span(),
+                    ref_kind,
+                    span,
                 }
             } else {
                 return Err(parser.expect_else());
             }
         } else {
+            let span = if let Some(span) = span {
+                span.to(id.span)
+            } else {
+                id.span
+            };
+
             Ty {
-                kind: TyKind::External(TyExternal {
+                kind: TyKind::UserDef(TyUserDef {
                     module: None,
-                    item: id,
+                    id,
                     span: id.span,
                 }),
-                span: parser.span(),
+                ref_kind,
+                span,
             }
         }
     } else {
@@ -1358,10 +1445,10 @@ fn parse_expr_object(
                 span: name.span.to(inner_object.span),
                 kind: ExprKind::Object(Object {
                     span: name.span.to(inner_object.span),
-                    ty: TyExternal {
+                    ty: TyUserDef {
                         span: name.span,
                         module: None,
-                        item: name,
+                        id: name,
                     },
                     fields: inner_object.fields,
                 }),
@@ -1382,10 +1469,10 @@ fn parse_expr_object(
                         span: name.span.to(inner_object.span),
                         kind: ExprKind::Object(Object {
                             span: name.span.to(inner_object.span),
-                            ty: TyExternal {
+                            ty: TyUserDef {
                                 span: name.span.to(next_name.span),
                                 module: Some(name),
-                                item: next_name,
+                                id: next_name,
                             },
                             fields: inner_object.fields,
                         }),
@@ -1486,6 +1573,19 @@ fn parse_expr_item(
         }
 
         Ok(expr)
+    } else if parser.expect_kind(TokenKind::OpenBracket) {
+        let span = parser.span();
+        let expr = parse_expr(parser, true)?;
+
+        parser.expect_begin();
+        if !parser.expect_kind(TokenKind::CloseBracket) {
+            return Err(parser.expect_else());
+        }
+
+        Ok(Expr {
+            kind: ExprKind::Deref(Box::new(expr)),
+            span: span.to(parser.span()),
+        })
     } else if let Some(id) = parser.expect_id() {
         Ok(Expr {
             kind: ExprKind::Id(SymbolWithSpan {

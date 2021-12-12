@@ -1,22 +1,12 @@
 use crate::*;
 use diagnostic::{Diagnostic, Level, MultiSpan};
+use high_lexer::Symbol;
 use parser::parse;
 use span::SourcePath;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum ScopeRef {
-    Module(usize),
-    Scope(usize),
-}
-
-#[derive(Debug, Clone, Hash)]
-struct TyRef {
-    scope: ScopeRef,
-    ty: Ty,
-}
 
 pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
     let mut source_map = SourceMap::new();
@@ -40,7 +30,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
     let mut fn_headers = vec![];
 
     let mut modules_map = HashMap::new();
-    modules_map.insert(source_path, 0);
+    modules_map.insert(source_path, ModuleDef(0));
 
     let mut modules = vec![parse(source).unwrap()];
     let mut next_modules = vec![];
@@ -52,7 +42,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
 
         for module in modules {
             let mut resolved = ResolvedModule {
-                def: resolved_modules.len(),
+                def: ModuleDef( resolved_modules.len()),
                 source: module.source.clone(),
                 uses: vec![],
                 structs: vec![],
@@ -68,7 +58,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
 
                         for previous_item in &resolved.uses {
                             if let SourcePath::Real(previous_path) =
-                                resolved_modules[previous_item.def].source.path()
+                                resolved_modules[previous_item.def.0].source.path()
                             {
                                 if path.eq(previous_path) {
                                     Diagnostic::push_new(Diagnostic::new(
@@ -90,10 +80,10 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                             // This module is new one. Load it and add to unresolved_modules.
                             resolved.uses.push(ResolvedModuleUse {
                                 name: item.segments.last().cloned().unwrap(),
-                                def: module_len + next_modules.len(),
+                                def: ModuleDef (module_len + next_modules.len()),
                                 span: item.span,
                             });
-                            modules_map.insert(path.clone(), module_len + next_modules.len());
+                            modules_map.insert(path.clone(), ModuleDef (module_len + next_modules.len()));
                             next_modules.push({
                                 let content = read_to_string(&path).expect(&format!(
                                     "unable to read module at: {}",
@@ -160,7 +150,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                         resolved.structs.push(ResolvedModuleStruct {
                             name: item.item.name,
                             prefix: item.prefix,
-                            def: structs.len(),
+                            def: StructDef( structs.len()),
                             span: item.span,
                         });
                         structs.push((resolved.def, item.item));
@@ -217,7 +207,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
                         resolved.fns.push(ResolvedModuleFn {
                             name: item.item.header.name,
                             prefix: item.prefix,
-                            def: fns.len(),
+                            def: FunctionDef( fns.len()),
                             span: item.span,
                         });
                         fns.push((resolved.def, item.item));
@@ -273,7 +263,7 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
 
                         resolved.fn_headers.push(ResolvedModuleFnHeader {
                             name: item.header.name,
-                            def: fn_headers.len(),
+                            def: FunctionHeaderDef( fn_headers.len()),
                             span: item.span,
                         });
                         fn_headers.push((resolved.def, item.header));
@@ -332,18 +322,10 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> SymbolTable {
         .into_iter()
         .map(|item| {
             resolve_ty(
-                match item.scope {
-                    ScopeRef::Module(def) => &resolved_modules[def],
-                    ScopeRef::Scope(def) => &resolved_modules[global_scopes[def].module],
-                },
                 &resolved_modules,
                 &global_scopes,
-                &global_structs,
-                &global_inner_structs,
-                &global_fns,
-                &global_fn_headers,
                 item,
-            )
+            ).unwrap()
         })
         .collect::<Vec<_>>();
 
@@ -376,556 +358,365 @@ fn use_to_path(source: &Source, item: &Use) -> Option<PathBuf> {
     }
 }
 
-fn resolve_ty(
-    module: &ResolvedModule,
-    modules: &[ResolvedModule],
-    scopes: &[GlobalScope],
-    structs: &[GlobalStruct],
-    inner_structs: &[GlobalInnerStruct],
-    fns: &[GlobalFn],
-    fn_headers: &[GlobalFnHeader],
-    item: TyRef,
-) -> ResolvedType {
-    ResolvedType {
-        kind: match item.ty.kind {
-            TyKind::Bool => ResolvedTypeKind::Bool,
-            TyKind::Byte => ResolvedTypeKind::Byte,
-            TyKind::Char => ResolvedTypeKind::Char,
-            TyKind::I64 => ResolvedTypeKind::I64,
-            TyKind::U64 => ResolvedTypeKind::U64,
-            TyKind::Isize => ResolvedTypeKind::Isize,
-            TyKind::Usize => ResolvedTypeKind::Usize,
-            TyKind::F64 => ResolvedTypeKind::F64,
-            TyKind::Str => ResolvedTypeKind::Str,
-            TyKind::Cptr(inner) => ResolvedTypeKind::Cptr(Box::new(resolve_ty(
-                module,
-                modules,
-                scopes,
-                structs,
-                inner_structs,
-                fns,
-                fn_headers,
-                TyRef {
-                    scope: item.scope,
-                    ty: *inner,
-                },
-            ))),
-            TyKind::Mptr(inner) => ResolvedTypeKind::Cptr(Box::new(resolve_ty(
-                module,
-                modules,
-                scopes,
-                structs,
-                inner_structs,
-                fns,
-                fn_headers,
-                TyRef {
-                    scope: item.scope,
-                    ty: *inner,
-                },
-            ))),
-            TyKind::External(inner) => {
-                if let Some(external) = inner.module {
-                    if let Some(use_index) = module
-                        .uses
-                        .iter()
-                        .position(|item| item.name.symbol == external.symbol)
-                    {
-                        let external = &modules[module.uses[use_index].def];
-
-                        if let Some(index) = external
-                            .structs
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let external = &external.structs[index];
-
-                            if external.prefix.is_none() {
-                                panic!("that struct is not pub");
-                            }
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Struct(external.def),
-                                span: external.span,
-                            };
-                        }
-
-                        if let Some(index) = external
-                            .fns
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let external = &external.fns[index];
-
-                            if external.prefix.is_none() {
-                                panic!("that struct is not pub");
-                            }
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Fn(external.def),
-                                span: external.span,
-                            };
-                        }
-
-                        if let Some(index) = external
-                            .fn_headers
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let external = &external.fn_headers[index];
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Fn(external.def),
-                                span: external.span,
-                            };
-                        }
-
-                        panic!("could not find use for external");
-                    } else {
-                        // TODO: Report a diagnostic instead of paniking.
-                        panic!("could not find use for external");
-                    }
-                } else {
-                    let mut ty = None;
-                    let (module, mut scope) = match item.scope {
-                        ScopeRef::Module(def) => (def, None),
-                        ScopeRef::Scope(def) => (scopes[def].module, Some(def)),
-                    };
-
-                    while let Some(index) = scope {
-                        if let Some(kind) = &scopes[index].kind {
-                            match kind {
-                                ScopeKind::Struct(item) => {
-                                    if item.name.symbol == inner.item.symbol {
-                                        ty = Some(ResolvedTypeKind::Struct(item.def));
-                                        break;
-                                    }
-                                }
-                                ScopeKind::Fn(item) => {
-                                    if item.name.symbol == inner.item.symbol {
-                                        ty = Some(ResolvedTypeKind::Fn(item.def));
-                                        break;
-                                    }
-                                }
-                                ScopeKind::Let(item) => {
-                                    if item.name.symbol == inner.item.symbol {
-                                        ty = Some(ResolvedTypeKind::Let(item.def));
-                                        break;
-                                    }
-                                }
-                                ScopeKind::For(..) => {}
-                            }
-                        }
-
-                        scope = scopes[index].parent;
-                    }
-
-                    if let Some(ty) = ty {
-                        ty
-                    } else {
-                        let module = &modules[module];
-
-                        if let Some(index) = module
-                            .structs
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let global = &module.structs[index];
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Struct(global.def),
-                                span: global.span,
-                            };
-                        }
-
-                        if let Some(index) = module
-                            .fns
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let global = &module.fns[index];
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Fn(global.def),
-                                span: global.span,
-                            };
-                        }
-
-                        if let Some(index) = module
-                            .fn_headers
-                            .iter()
-                            .position(|item| item.name.symbol == inner.item.symbol)
-                        {
-                            let global = &module.fn_headers[index];
-
-                            return ResolvedType {
-                                kind: ResolvedTypeKind::Fn(global.def),
-                                span: global.span,
-                            };
-                        }
-
-                        panic!("could not find use for global");
-                    }
-                }
-            }
-        },
-        span: item.ty.span,
-    }
-}
-
 fn to_global_expr(
-    scope: usize,
+    scope: ScopeDef,
     types: &mut Vec<TyRef>,
     exprs: &mut Vec<GlobalExpr>,
     item: Expr,
-) -> usize {
+) -> ExprDef {
     match item.kind {
         ExprKind::Assign(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Assign(lhs, rhs),
                 span: item.span,
             });
-            def
+            ExprDef(def)
         }
         ExprKind::AssignAdd(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignAdd(lhs, rhs),
                 span: item.span,
             });
-            def
+            ExprDef(def)
         }
         ExprKind::AssignSub(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignSub(lhs, rhs),
                 span: item.span,
             });
-            def
+            ExprDef(def)
         }
         ExprKind::AssignMul(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignMul(lhs, rhs),
                 span: item.span,
             });
-            def
+            ExprDef(def)
         }
         ExprKind::AssignDiv(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignDiv(lhs, rhs),
                 span: item.span,
             });
-            def
+            ExprDef(def)
         }
         ExprKind::AssignMod(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignMod(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignShl(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignShl(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignShr(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignShr(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignBitOr(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignBitOr(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignBitAnd(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignBitAnd(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignBitXor(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignBitXor(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::AssignBitNot(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::AssignBitNot(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Rng(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Rng(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::RngInclusive(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::RngInclusive(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Eq(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Eq(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Ne(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Ne(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Lt(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Lt(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Gt(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Gt(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Le(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Le(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Ge(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Ge(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Neg(lhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Neg(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Add(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Add(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Sub(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Sub(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Mul(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Mul(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Div(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Div(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Mod(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Mod(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Shl(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Shl(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Shr(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Shr(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::BitOr(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::BitOr(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::BitAnd(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::BitAnd(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::BitXor(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::BitXor(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::BitNot(lhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::BitNot(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::LogOr(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::LogOr(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::LogAnd(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::LogAnd(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::LogNot(lhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::BitNot(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Cast(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = {
@@ -934,24 +725,24 @@ fn to_global_expr(
                     scope: ScopeRef::Scope(scope),
                     ty: rhs,
                 });
-                def
+                TyDef( def)
             };
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Cast(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Object(lhs) => {
             let lhs = to_global_object(scope, types, exprs, lhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Object(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Call(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = rhs
@@ -960,51 +751,52 @@ fn to_global_expr(
                 .collect();
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Call(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Index(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let rhs = to_global_expr(scope, types, exprs, *rhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Index(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Member(lhs, rhs) => {
             let lhs = to_global_expr(scope, types, exprs, *lhs);
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Member(lhs, rhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
+        ExprKind::Deref(_) => todo!(),
         ExprKind::Id(lhs) => {
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Id(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
         ExprKind::Literal(lhs) => {
             let def = exprs.len();
             exprs.push(GlobalExpr {
+                scope,
                 kind: GlobalExprKind::Literal(lhs),
                 span: item.span,
             });
-            def
-        }
+            ExprDef(def)       }
     }
 }
 
 fn to_global_object(
-    scope: usize,
+    scope: ScopeDef,
     types: &mut Vec<TyRef>,
     exprs: &mut Vec<GlobalExpr>,
     item: Object,
@@ -1016,7 +808,8 @@ fn to_global_object(
                 scope: ScopeRef::Scope(scope),
                 ty: Ty {
                     span: item.span,
-                    kind: TyKind::External(item.ty),
+                    kind: TyKind::UserDef(item.ty),
+                    ref_kind: None,
                 },
             });
             def
@@ -1079,7 +872,9 @@ fn to_scope_struct(
         fields: item
             .fields
             .into_iter()
-            .map(|field| GlobalStructField {
+            .map(|field| 
+                // TODO: Emit a diagnostic if the field name is already used
+                GlobalStructField {
                 vis: field.vis,
                 name: field.name,
                 kind: match field.kind {
@@ -1093,7 +888,7 @@ fn to_scope_struct(
                     ),
                 },
                 span: field.span,
-            })
+                })
             .collect(),
         span: item.span,
     }

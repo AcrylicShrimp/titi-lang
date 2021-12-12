@@ -79,6 +79,7 @@ pub enum VisKind {
 #[derive(Debug, Clone, Hash)]
 pub struct Ty {
     pub kind: TyKind,
+    pub ref_kind: Option<TyRefKind>,
     pub span: Span,
 }
 
@@ -95,13 +96,19 @@ pub enum TyKind {
     Str,
     Cptr(Box<Ty>),
     Mptr(Box<Ty>),
-    External(TyExternal),
+    UserDef(TyUserDef),
 }
 
 #[derive(Debug, Clone, Hash)]
-pub struct TyExternal {
+pub enum TyRefKind {
+    Cref,
+    Mref,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TyUserDef {
     pub module: Option<SymbolWithSpan>,
-    pub item: SymbolWithSpan,
+    pub id: SymbolWithSpan,
     pub span: Span,
 }
 
@@ -299,13 +306,14 @@ pub enum ExprKind {
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Member(Box<Expr>, SymbolWithSpan),
+    Deref(Box<Expr>),
     Id(SymbolWithSpan),
     Literal(Literal),
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct Object {
-    pub ty: TyExternal,
+    pub ty: TyUserDef,
     pub fields: Vec<ObjectField>,
     pub span: Span,
 }
