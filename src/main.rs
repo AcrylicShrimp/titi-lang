@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use hir::analyze_module;
+use hir::resolve;
 use std::path::PathBuf;
 
 fn main() {
@@ -16,9 +16,9 @@ fn main() {
         .get_matches();
     let entry = matches.value_of("entry").unwrap();
 
-    let symbol_table = analyze_module(PathBuf::from(entry));
+    let resolved = resolve(PathBuf::from(entry));
 
-    println!("{:#?}", symbol_table);
+    println!("{:?}", resolved);
 
     // let ctx = init(PathBuf::from(entry));
     // let module = ctx.module("").unwrap();

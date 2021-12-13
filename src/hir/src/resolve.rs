@@ -8,6 +8,15 @@ use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+#[derive(Debug)]
+pub struct ResolvedContext {
+    pub modules: Vec<ResolvedModule>,
+    pub structs: Vec<(ModuleDef, Struct)>,
+    pub fns: Vec<(ModuleDef, Fn)>,
+    pub fn_headers: Vec<(ModuleDef, FnHeader)>,
+}
+
+#[derive(Debug)]
 pub struct ResolvedModule {
     pub def: ModuleDef,
     pub source: Arc<Source>,
@@ -65,7 +74,7 @@ fn use_to_path(source: &Source, item: &Use) -> Option<PathBuf> {
     }
 }
 
-pub fn analyze_module<P: AsRef<Path>>(source: P) -> Vec<ResolvedModule> {
+pub fn resolve<P: AsRef<Path>>(source: P) -> ResolvedContext {
     let mut source_map = SourceMap::new();
 
     let source_path = source
@@ -339,5 +348,10 @@ pub fn analyze_module<P: AsRef<Path>>(source: P) -> Vec<ResolvedModule> {
         next_modules = vec![];
     }
 
-    resolved_modules
+    ResolvedContext {
+        modules: resolved_modules,
+        structs,
+        fns,
+        fn_headers,
+    }
 }
