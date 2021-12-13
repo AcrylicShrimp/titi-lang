@@ -34,7 +34,7 @@ pub struct FunctionDef(pub usize);
 pub struct FunctionHeaderDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LetDef(pub usize);
+pub struct StmtDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprDef(pub usize);
@@ -46,6 +46,12 @@ pub struct TyDef(pub usize);
 pub struct TyRef {
     pub scope: ScopeRef,
     pub ty: Ty,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct TyRefUserDef {
+    pub scope: ScopeRef,
+    pub ty: TyUserDef,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

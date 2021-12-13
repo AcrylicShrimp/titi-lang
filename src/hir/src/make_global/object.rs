@@ -2,7 +2,7 @@ use crate::make_global::{
     make_global_expr, GlobalExpr, GlobalInnerObject, GlobalObject, GlobalObjectField,
     GlobalObjectFieldKind,
 };
-use crate::ScopeDef;
+use crate::{ScopeDef, ScopeRef, TyRefUserDef};
 use ast::{InnerObject, Object, ObjectField, ObjectFieldKind};
 
 pub fn make_global_object(
@@ -11,7 +11,10 @@ pub fn make_global_object(
     object: Object,
 ) -> GlobalObject {
     GlobalObject {
-        ty: object.ty,
+        ty: TyRefUserDef {
+            scope: ScopeRef::Scope(scope),
+            ty: object.ty,
+        },
         fields: object
             .fields
             .into_iter()

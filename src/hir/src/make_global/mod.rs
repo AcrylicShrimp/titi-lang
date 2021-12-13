@@ -1,100 +1,184 @@
 mod expr;
+mod function;
 mod object;
+mod stmt;
+mod r#struct;
+mod ty;
 
 pub use expr::*;
+pub use function::*;
 pub use object::*;
+pub use r#struct::*;
+pub use stmt::*;
+pub use ty::*;
 
 use crate::{
-    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, LetDef, ModuleDef, ScopeDef,
-    StructDef, TyDef,
+    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, ModuleDef, ScopeDef, StmtDef,
+    StructDef, TyRef, TyRefUserDef,
 };
 use ast::*;
 use span::Span;
 
-// #[derive(Debug)]
-// pub struct GlobalScope {
-//     pub module: ModuleDef,
-//     pub kind: Option<GlobalScopeKind>,
-//     pub parent: Option<ScopeDef>,
-// }
+#[derive(Debug)]
+pub struct GlobalScope {
+    pub module: ModuleDef,
+    pub parent: Option<ScopeDef>,
+    pub kind: GlobalScopeKind,
+}
 
-// #[derive(Debug)]
-// pub enum GlobalScopeKind {
-//     Struct(StructDef),
-//     Fn(FunctionDef),
-//     Let(LetDef),
-//     For(ScopeFor),
-// }
+#[derive(Debug)]
+pub enum GlobalScopeKind {
+    Struct(StructDef),
+    Fn(FunctionDef),
+    Let(StmtDef),
+    For(StmtDef),
+}
 
-// #[derive(Debug)]
-// pub struct GlobalStruct {
-//     pub name: SymbolWithSpan,
-//     pub fields: Vec<GlobalStructField>,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalStruct {
+    pub name: SymbolWithSpan,
+    pub fields: Vec<GlobalStructField>,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalStructField {
-//     pub vis: Option<Vis>,
-//     pub name: SymbolWithSpan,
-//     pub kind: GlobalStructFieldKind,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalStructField {
+    pub vis: Option<Vis>,
+    pub name: SymbolWithSpan,
+    pub kind: GlobalStructFieldKind,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub enum GlobalStructFieldKind {
-//     Plain(TyDef),
-//     Struct(InnerStructDef),
-// }
+#[derive(Debug)]
+pub enum GlobalStructFieldKind {
+    Plain(TyRef),
+    Struct(InnerStructDef),
+}
 
-// #[derive(Debug)]
-// pub struct GlobalInnerStruct {
-//     pub fields: Vec<GlobalInnerStructField>,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalInnerStruct {
+    pub fields: Vec<GlobalInnerStructField>,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalInnerStructField {
-//     pub name: SymbolWithSpan,
-//     pub kind: GlobalStructFieldKind,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalInnerStructField {
+    pub name: SymbolWithSpan,
+    pub kind: GlobalStructFieldKind,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalFn {
-//     pub header: GlobalFnHeader,
-//     pub body: ScopeBlock,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalFn {
+    pub header: FunctionHeaderDef,
+    pub body: StmtDef,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalFnHeader {
-//     pub name: SymbolWithSpan,
-//     pub params: Vec<GlobalFnParam>,
-//     pub return_ty: Option<TyDef>,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalFnHeader {
+    pub name: SymbolWithSpan,
+    pub params: Vec<GlobalFnParam>,
+    pub return_ty: Option<TyRef>,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalFnParam {
-//     pub name: SymbolWithSpan,
-//     pub ty: TyDef,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalFnParam {
+    pub name: SymbolWithSpan,
+    pub ty: TyRef,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub struct GlobalLet {
-//     pub name: SymbolWithSpan,
-//     pub kind: GlobalLetKind,
-//     pub span: Span,
-// }
+#[derive(Debug)]
+pub struct GlobalStmt {
+    pub scope: ScopeDef,
+    pub kind: GlobalStmtKind,
+    pub span: Span,
+}
 
-// #[derive(Debug)]
-// pub enum GlobalLetKind {
-//     Ty(TyDef),
-//     Expr(ExprDef),
-//     TyExpr(TyDef, ExprDef),
-// }
+#[derive(Debug)]
+pub enum GlobalStmtKind {
+    Let(GlobalStmtLet),
+    If(GlobalStmtIf),
+    For(GlobalStmtFor),
+    Else(GlobalStmtElse),
+    Block(GlobalStmtBlock),
+    Break(GlobalStmtBreak),
+    Continue(GlobalStmtContinue),
+    Return(GlobalStmtReturn),
+    Expr(ExprDef),
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtLet {
+    pub name: SymbolWithSpan,
+    pub kind: GlobalStmtLetKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalStmtLetKind {
+    Ty(TyRef),
+    Expr(ExprDef),
+    TyExpr(TyRef, ExprDef),
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtFor {
+    pub kind: GlobalStmtForKind,
+    pub body: StmtDef,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalStmtForKind {
+    Loop,
+    While(ExprDef),
+    ForIn(SymbolWithSpan, ExprDef),
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtIf {
+    pub cond: ExprDef,
+    pub then_body: StmtDef,
+    pub else_kind: Option<StmtDef>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtElse {
+    pub kind: GlobalStmtElseKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalStmtElseKind {
+    Else(StmtDef),
+    ElseIf(StmtDef),
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtBlock {
+    pub stmts: Vec<StmtDef>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtBreak {
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtContinue {
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtReturn {
+    pub expr: Option<ExprDef>,
+    pub span: Span,
+}
 
 #[derive(Debug)]
 pub struct GlobalExpr {
@@ -140,7 +224,7 @@ pub enum GlobalExprKind {
     LogOr(ExprDef, ExprDef),
     LogAnd(ExprDef, ExprDef),
     LogNot(ExprDef),
-    Cast(ExprDef, Ty),
+    Cast(ExprDef, TyRef),
     Object(GlobalObject),
     Call(ExprDef, Vec<ExprDef>),
     Index(ExprDef, ExprDef),
@@ -152,7 +236,7 @@ pub enum GlobalExprKind {
 
 #[derive(Debug)]
 pub struct GlobalObject {
-    pub ty: TyUserDef,
+    pub ty: TyRefUserDef,
     pub fields: Vec<GlobalObjectField>,
     pub span: Span,
 }
@@ -175,89 +259,3 @@ pub struct GlobalInnerObject {
     pub fields: Vec<GlobalObjectField>,
     pub span: Span,
 }
-
-// #[derive(Debug)]
-// pub enum GlobalTy {
-//     Bool,
-//     Char,
-//     I64,
-//     U64,
-//     Isize,
-//     Usize,
-//     F64,
-//     Str,
-//     Mptr(TyDef),
-//     Cptr(TyDef),
-//     Struct(StructDef),
-//     Fn(FunctionDef),
-//     FnHeader(FunctionHeaderDef),
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeStruct {
-//     pub name: SymbolWithSpan,
-//     pub def: StructDef,
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeFn {
-//     pub name: SymbolWithSpan,
-//     pub def: FunctionDef,
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeLet {
-//     pub name: SymbolWithSpan,
-//     pub def: LetDef,
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeIf {
-//     pub cond: Expr,
-//     pub then_body: ScopeBlock,
-//     pub else_kind: Option<Box<ScopeElseKind>>,
-//     pub span: Span,
-// }
-
-// #[derive(Debug)]
-// pub enum ScopeElseKind {
-//     Else(ScopeBlock),
-//     ElseIf(ScopeIf),
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeFor {
-//     pub kind: ScopeForKind,
-//     pub body: ScopeBlock,
-//     pub span: Span,
-// }
-
-// #[derive(Debug)]
-// pub enum ScopeForKind {
-//     Loop,
-//     While(ExprDef),
-//     ForIn(SymbolWithSpan, ExprDef),
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeBlock {
-//     pub stmts: Vec<ScopeStmt>,
-//     pub span: Span,
-// }
-
-// #[derive(Debug)]
-// pub struct ScopeStmt {
-//     pub kind: ScopeStmtKind,
-//     pub span: Span,
-// }
-
-// #[derive(Debug)]
-// pub enum ScopeStmtKind {
-//     Scope(ScopeDef),
-//     Block(ScopeBlock),
-//     If(ScopeIf),
-//     Break(Break),
-//     Continue(Continue),
-//     Return(Return),
-//     Expr(ExprDef),
-// }

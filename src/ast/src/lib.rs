@@ -78,8 +78,20 @@ pub enum VisKind {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Ty {
-    pub kind: TyKind,
     pub ref_kind: Option<TyRefKind>,
+    pub sub_ty: SubTy,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum TyRefKind {
+    Cref,
+    Mref,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct SubTy {
+    pub kind: TyKind,
     pub span: Span,
 }
 
@@ -94,15 +106,9 @@ pub enum TyKind {
     Usize,
     F64,
     Str,
-    Cptr(Box<Ty>),
-    Mptr(Box<Ty>),
+    Cptr(Box<SubTy>),
+    Mptr(Box<SubTy>),
     UserDef(TyUserDef),
-}
-
-#[derive(Debug, Clone, Hash)]
-pub enum TyRefKind {
-    Cref,
-    Mref,
 }
 
 #[derive(Debug, Clone, Hash)]
