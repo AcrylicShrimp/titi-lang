@@ -5,7 +5,7 @@ mod stmt;
 mod r#struct;
 
 use crate::{
-    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, ModuleDef, ResolvedContext,
+    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, LitDef, ModuleDef, ResolvedContext,
     ResolvedModule, ScopeDef, ScopeRef, StmtDef, StructDef, TyRef, TyRefUserDef,
 };
 use ast::*;
@@ -26,6 +26,7 @@ pub struct GlobalContext {
     pub fn_headers: Vec<GlobalFnHeader>,
     pub stmts: Vec<GlobalStmt>,
     pub exprs: Vec<GlobalExpr>,
+    pub lits: Vec<Literal>,
 }
 
 #[derive(Debug)]
@@ -240,7 +241,7 @@ pub enum GlobalExprKind {
     Member(ExprDef, SymbolWithSpan),
     Deref(ExprDef),
     Id(SymbolWithSpan),
-    Literal(Literal),
+    Literal(LitDef),
 }
 
 #[derive(Debug)]
@@ -300,6 +301,7 @@ pub fn make_global(resolved: ResolvedContext) -> GlobalContext {
                 &mut context.fn_headers,
                 &mut context.stmts,
                 &mut context.exprs,
+                &mut context.lits,
                 ScopeRef::Module(module.def),
                 fns[r#fn.def.0].take().unwrap().1,
             );

@@ -3,7 +3,7 @@ use crate::make_global::{
     GlobalStmt, GlobalStruct,
 };
 use crate::{FunctionDef, FunctionHeaderDef, ScopeRef, TyRef};
-use ast::{Fn, FnHeader, FnParam};
+use ast::{Fn, FnHeader, FnParam, Literal};
 
 use super::make_global_stmt_block;
 
@@ -15,6 +15,7 @@ pub fn make_global_fn(
     global_fn_headers: &mut Vec<GlobalFnHeader>,
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     function: Fn,
 ) -> FunctionDef {
@@ -28,6 +29,7 @@ pub fn make_global_fn(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             function.body,
         ),

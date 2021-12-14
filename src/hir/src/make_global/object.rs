@@ -3,10 +3,11 @@ use crate::make_global::{
     GlobalObjectFieldKind,
 };
 use crate::{ScopeRef, TyRefUserDef};
-use ast::{InnerObject, Object, ObjectField, ObjectFieldKind};
+use ast::{InnerObject, Literal, Object, ObjectField, ObjectFieldKind};
 
 pub fn make_global_object(
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     object: Object,
 ) -> GlobalObject {
@@ -18,7 +19,7 @@ pub fn make_global_object(
         fields: object
             .fields
             .into_iter()
-            .map(|field| make_global_object_field(global_exprs, scope, field))
+            .map(|field| make_global_object_field(global_exprs, global_lits, scope, field))
             .collect(),
         span: object.span,
     }
@@ -26,17 +27,21 @@ pub fn make_global_object(
 
 fn make_global_object_field(
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     field: ObjectField,
 ) -> GlobalObjectField {
     GlobalObjectField {
         name: field.name,
         kind: match field.kind {
-            ObjectFieldKind::Expr(expr) => {
-                GlobalObjectFieldKind::Expr(make_global_expr(global_exprs, scope, expr))
-            }
+            ObjectFieldKind::Expr(expr) => GlobalObjectFieldKind::Expr(make_global_expr(
+                global_exprs,
+                global_lits,
+                scope,
+                expr,
+            )),
             ObjectFieldKind::InnerObject(inner) => GlobalObjectFieldKind::InnerObject(
-                make_global_inner_object(global_exprs, scope, inner),
+                make_global_inner_object(global_exprs, global_lits, scope, inner),
             ),
         },
         span: field.span,
@@ -45,6 +50,7 @@ fn make_global_object_field(
 
 fn make_global_inner_object(
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     inner: InnerObject,
 ) -> GlobalInnerObject {
@@ -52,7 +58,7 @@ fn make_global_inner_object(
         fields: inner
             .fields
             .into_iter()
-            .map(|field| make_global_object_field(global_exprs, scope, field))
+            .map(|field| make_global_object_field(global_exprs, global_lits, scope, field))
             .collect(),
         span: inner.span,
     }

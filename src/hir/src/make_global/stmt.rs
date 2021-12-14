@@ -5,7 +5,7 @@ use crate::make_global::{
     GlobalStmtIf, GlobalStmtKind, GlobalStmtLet, GlobalStmtLetKind, GlobalStmtReturn, GlobalStruct,
 };
 use crate::{ScopeDef, ScopeRef, StmtDef, TyRef};
-use ast::{Block, ElseKind, For, ForKind, If, Let, LetKind, Stmt, StmtKind};
+use ast::{Block, ElseKind, For, ForKind, If, Let, LetKind, Literal, Stmt, StmtKind};
 
 pub enum MakeGlobalStmtResult {
     Scope(ScopeDef),
@@ -21,6 +21,7 @@ pub fn make_global_stmt(
     global_fn_headers: &mut Vec<GlobalFnHeader>,
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     stmt: Stmt,
 ) -> MakeGlobalStmtResult {
@@ -33,6 +34,7 @@ pub fn make_global_stmt(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             block,
         )),
@@ -67,6 +69,7 @@ pub fn make_global_stmt(
                 global_fn_headers,
                 global_stmts,
                 global_exprs,
+                global_lits,
                 ScopeRef::Scope(new_scope),
                 function,
             );
@@ -88,6 +91,7 @@ pub fn make_global_stmt(
             let def = make_global_stmt_let(
                 global_stmts,
                 global_exprs,
+                global_lits,
                 ScopeRef::Scope(new_scope),
                 r#let,
             );
@@ -112,6 +116,7 @@ pub fn make_global_stmt(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             r#if,
         )),
@@ -125,6 +130,7 @@ pub fn make_global_stmt(
                 global_fn_headers,
                 global_stmts,
                 global_exprs,
+                global_lits,
                 ScopeRef::Scope(new_scope),
                 r#for,
             );
@@ -167,7 +173,7 @@ pub fn make_global_stmt(
             let r#return = GlobalStmtReturn {
                 expr: r#return
                     .expr
-                    .map(|expr| make_global_expr(global_exprs, scope, expr)),
+                    .map(|expr| make_global_expr(global_exprs, global_lits, scope, expr)),
                 span: r#return.span,
             };
             let def = global_stmts.len();
@@ -182,7 +188,12 @@ pub fn make_global_stmt(
             let stmt = GlobalStmt {
                 scope,
                 span: expr.span,
-                kind: GlobalStmtKind::Expr(make_global_expr(global_exprs, scope, expr)),
+                kind: GlobalStmtKind::Expr(make_global_expr(
+                    global_exprs,
+                    global_lits,
+                    scope,
+                    expr,
+                )),
             };
             let def = global_stmts.len();
             global_stmts.push(stmt);
@@ -199,6 +210,7 @@ pub fn make_global_stmt_block(
     global_fn_headers: &mut Vec<GlobalFnHeader>,
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     mut scope: ScopeRef,
     block: Block,
 ) -> StmtDef {
@@ -213,6 +225,7 @@ pub fn make_global_stmt_block(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             stmt,
         ) {
@@ -245,6 +258,7 @@ pub fn make_global_stmt_block(
 fn make_global_stmt_let(
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     r#let: Let,
 ) -> StmtDef {
@@ -253,11 +267,11 @@ fn make_global_stmt_let(
         kind: match r#let.kind {
             LetKind::Ty(ty) => GlobalStmtLetKind::Ty(TyRef { scope, ty }),
             LetKind::Expr(expr) => {
-                GlobalStmtLetKind::Expr(make_global_expr(global_exprs, scope, expr))
+                GlobalStmtLetKind::Expr(make_global_expr(global_exprs, global_lits, scope, expr))
             }
             LetKind::TyExpr(ty, expr) => GlobalStmtLetKind::TyExpr(
                 TyRef { scope, ty },
-                make_global_expr(global_exprs, scope, expr),
+                make_global_expr(global_exprs, global_lits, scope, expr),
             ),
         },
         span: r#let.span,
@@ -279,11 +293,12 @@ fn make_global_stmt_if(
     global_fn_headers: &mut Vec<GlobalFnHeader>,
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     r#if: If,
 ) -> StmtDef {
     let r#if = GlobalStmtIf {
-        cond: make_global_expr(global_exprs, scope, r#if.cond),
+        cond: make_global_expr(global_exprs, global_lits, scope, r#if.cond),
         then_body: make_global_stmt_block(
             global_scopes,
             global_structs,
@@ -292,6 +307,7 @@ fn make_global_stmt_if(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             r#if.then_body,
         ),
@@ -307,6 +323,7 @@ fn make_global_stmt_if(
                         global_fn_headers,
                         global_stmts,
                         global_exprs,
+                        global_lits,
                         scope,
                         r#else,
                     )),
@@ -321,6 +338,7 @@ fn make_global_stmt_if(
                         global_fn_headers,
                         global_stmts,
                         global_exprs,
+                        global_lits,
                         scope,
                         else_if,
                     )),
@@ -353,6 +371,7 @@ fn make_global_stmt_for(
     global_fn_headers: &mut Vec<GlobalFnHeader>,
     global_stmts: &mut Vec<GlobalStmt>,
     global_exprs: &mut Vec<GlobalExpr>,
+    global_lits: &mut Vec<Literal>,
     scope: ScopeRef,
     r#for: For,
 ) -> StmtDef {
@@ -360,11 +379,12 @@ fn make_global_stmt_for(
         kind: match r#for.kind {
             ForKind::Loop => GlobalStmtForKind::Loop,
             ForKind::While(expr) => {
-                GlobalStmtForKind::While(make_global_expr(global_exprs, scope, expr))
+                GlobalStmtForKind::While(make_global_expr(global_exprs, global_lits, scope, expr))
             }
-            ForKind::ForIn(ident, expr) => {
-                GlobalStmtForKind::ForIn(ident, make_global_expr(global_exprs, scope, expr))
-            }
+            ForKind::ForIn(ident, expr) => GlobalStmtForKind::ForIn(
+                ident,
+                make_global_expr(global_exprs, global_lits, scope, expr),
+            ),
         },
         body: make_global_stmt_block(
             global_scopes,
@@ -374,6 +394,7 @@ fn make_global_stmt_for(
             global_fn_headers,
             global_stmts,
             global_exprs,
+            global_lits,
             scope,
             r#for.body,
         ),

@@ -31,7 +31,10 @@ pub struct StmtDef(pub usize);
 pub struct ExprDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TyDef(pub usize);
+pub struct LitDef(pub usize);
+
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// pub struct TyDef(pub usize);
 
 #[derive(Debug, Clone, Hash)]
 pub struct TyRef {
