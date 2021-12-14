@@ -12,6 +12,7 @@ clap = { version = "2" }
 diagnostic = { path = "src/diagnostic", features = ["global_instance"] }
 high_lexer = { path = "src/high_lexer" }
 hir = { path = "src/hir" }
+mir = { path = "src/mir" }
 parser = { path = "src/parser" }
 span = { path = "src/span" }
 

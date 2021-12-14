@@ -137,6 +137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mir"
+version = "0.0.1"
+dependencies = [
+ "ast",
+ "diagnostic",
+ "high_lexer",
+ "hir",
+ "span",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,6 +245,7 @@ dependencies = [
  "diagnostic",
  "high_lexer",
  "hir",
+ "mir",
  "parser",
  "span",
 ]
