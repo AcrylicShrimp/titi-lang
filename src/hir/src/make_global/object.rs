@@ -2,17 +2,17 @@ use crate::make_global::{
     make_global_expr, GlobalExpr, GlobalInnerObject, GlobalObject, GlobalObjectField,
     GlobalObjectFieldKind,
 };
-use crate::{ScopeDef, ScopeRef, TyRefUserDef};
+use crate::{ScopeRef, TyRefUserDef};
 use ast::{InnerObject, Object, ObjectField, ObjectFieldKind};
 
 pub fn make_global_object(
     global_exprs: &mut Vec<GlobalExpr>,
-    scope: ScopeDef,
+    scope: ScopeRef,
     object: Object,
 ) -> GlobalObject {
     GlobalObject {
         ty: TyRefUserDef {
-            scope: ScopeRef::Scope(scope),
+            scope,
             ty: object.ty,
         },
         fields: object
@@ -26,7 +26,7 @@ pub fn make_global_object(
 
 fn make_global_object_field(
     global_exprs: &mut Vec<GlobalExpr>,
-    scope: ScopeDef,
+    scope: ScopeRef,
     field: ObjectField,
 ) -> GlobalObjectField {
     GlobalObjectField {
@@ -45,7 +45,7 @@ fn make_global_object_field(
 
 fn make_global_inner_object(
     global_exprs: &mut Vec<GlobalExpr>,
-    scope: ScopeDef,
+    scope: ScopeRef,
     inner: InnerObject,
 ) -> GlobalInnerObject {
     GlobalInnerObject {

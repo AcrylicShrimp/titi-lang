@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use hir::resolve;
+use hir::{make_global, resolve};
 use std::path::PathBuf;
 
 fn main() {
@@ -18,7 +18,11 @@ fn main() {
 
     let resolved = resolve(PathBuf::from(entry));
 
-    println!("{:?}", resolved);
+    // println!("{:?}", resolved);
+
+    let global = make_global(resolved);
+
+    println!("{:?}", global);
 
     // let ctx = init(PathBuf::from(entry));
     // let module = ctx.module("").unwrap();

@@ -3,21 +3,30 @@ mod function;
 mod object;
 mod stmt;
 mod r#struct;
-mod ty;
-
-pub use expr::*;
-pub use function::*;
-pub use object::*;
-pub use r#struct::*;
-pub use stmt::*;
-pub use ty::*;
 
 use crate::{
-    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, ModuleDef, ScopeDef, StmtDef,
-    StructDef, TyRef, TyRefUserDef,
+    ExprDef, FunctionDef, FunctionHeaderDef, InnerStructDef, ModuleDef, ResolvedContext,
+    ResolvedModule, ScopeDef, ScopeRef, StmtDef, StructDef, TyRef, TyRefUserDef,
 };
 use ast::*;
+use expr::*;
+use function::*;
+use object::*;
+use r#struct::*;
 use span::Span;
+use stmt::*;
+
+#[derive(Default, Debug)]
+pub struct GlobalContext {
+    pub modules: Vec<ResolvedModule>,
+    pub scopes: Vec<GlobalScope>,
+    pub structs: Vec<GlobalStruct>,
+    pub inner_structs: Vec<GlobalInnerStruct>,
+    pub fns: Vec<GlobalFn>,
+    pub fn_headers: Vec<GlobalFnHeader>,
+    pub stmts: Vec<GlobalStmt>,
+    pub exprs: Vec<GlobalExpr>,
+}
 
 #[derive(Debug)]
 pub struct GlobalScope {
@@ -92,18 +101,18 @@ pub struct GlobalFnParam {
 
 #[derive(Debug)]
 pub struct GlobalStmt {
-    pub scope: ScopeDef,
+    pub scope: ScopeRef,
     pub kind: GlobalStmtKind,
     pub span: Span,
 }
 
 #[derive(Debug)]
 pub enum GlobalStmtKind {
+    Block(GlobalStmtBlock),
     Let(GlobalStmtLet),
     If(GlobalStmtIf),
-    For(GlobalStmtFor),
     Else(GlobalStmtElse),
-    Block(GlobalStmtBlock),
+    For(GlobalStmtFor),
     Break(GlobalStmtBreak),
     Continue(GlobalStmtContinue),
     Return(GlobalStmtReturn),
@@ -125,20 +134,6 @@ pub enum GlobalStmtLetKind {
 }
 
 #[derive(Debug)]
-pub struct GlobalStmtFor {
-    pub kind: GlobalStmtForKind,
-    pub body: StmtDef,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub enum GlobalStmtForKind {
-    Loop,
-    While(ExprDef),
-    ForIn(SymbolWithSpan, ExprDef),
-}
-
-#[derive(Debug)]
 pub struct GlobalStmtIf {
     pub cond: ExprDef,
     pub then_body: StmtDef,
@@ -156,6 +151,20 @@ pub struct GlobalStmtElse {
 pub enum GlobalStmtElseKind {
     Else(StmtDef),
     ElseIf(StmtDef),
+}
+
+#[derive(Debug)]
+pub struct GlobalStmtFor {
+    pub kind: GlobalStmtForKind,
+    pub body: StmtDef,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum GlobalStmtForKind {
+    Loop,
+    While(ExprDef),
+    ForIn(SymbolWithSpan, ExprDef),
 }
 
 #[derive(Debug)]
@@ -182,7 +191,7 @@ pub struct GlobalStmtReturn {
 
 #[derive(Debug)]
 pub struct GlobalExpr {
-    pub scope: ScopeDef,
+    pub scope: ScopeRef,
     pub kind: GlobalExprKind,
     pub span: Span,
 }
@@ -258,4 +267,52 @@ pub enum GlobalObjectFieldKind {
 pub struct GlobalInnerObject {
     pub fields: Vec<GlobalObjectField>,
     pub span: Span,
+}
+
+pub fn make_global(resolved: ResolvedContext) -> GlobalContext {
+    let mut structs = resolved.structs.into_iter().map(Some).collect::<Vec<_>>();
+    let mut fns = resolved.fns.into_iter().map(Some).collect::<Vec<_>>();
+    let mut fn_headers = resolved
+        .fn_headers
+        .into_iter()
+        .map(Some)
+        .collect::<Vec<_>>();
+
+    let mut context = GlobalContext::default();
+    context.modules = resolved.modules;
+
+    for module in &mut context.modules {
+        for r#struct in &mut module.structs {
+            r#struct.def = make_global_struct(
+                &mut context.structs,
+                &mut context.inner_structs,
+                ScopeRef::Module(module.def),
+                structs[r#struct.def.0].take().unwrap().1,
+            );
+        }
+
+        for r#fn in &mut module.fns {
+            r#fn.def = make_global_fn(
+                &mut context.scopes,
+                &mut context.structs,
+                &mut context.inner_structs,
+                &mut context.fns,
+                &mut context.fn_headers,
+                &mut context.stmts,
+                &mut context.exprs,
+                ScopeRef::Module(module.def),
+                fns[r#fn.def.0].take().unwrap().1,
+            );
+        }
+
+        for header in &mut module.fn_headers {
+            header.def = make_global_fn_header(
+                &mut context.fn_headers,
+                ScopeRef::Module(module.def),
+                fn_headers[header.def.0].take().unwrap().1,
+            );
+        }
+    }
+
+    context
 }

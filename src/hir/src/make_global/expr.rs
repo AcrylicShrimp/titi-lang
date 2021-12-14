@@ -1,5 +1,5 @@
 use crate::make_global::{make_global_object, GlobalExpr, GlobalExprKind};
-use crate::{ExprDef, ScopeDef, ScopeRef, TyRef};
+use crate::{ExprDef, ScopeRef, TyRef};
 use ast::{Expr, ExprKind};
 
 macro_rules! make_global_expr_impl {
@@ -28,7 +28,7 @@ macro_rules! make_global_expr_impl {
 
 pub fn make_global_expr(
     global_exprs: &mut Vec<GlobalExpr>,
-    scope: ScopeDef,
+    scope: ScopeRef,
     expr: Expr,
 ) -> ExprDef {
     let def = match expr.kind {
@@ -142,13 +142,7 @@ pub fn make_global_expr(
             let def = global_exprs.len();
             global_exprs.push(GlobalExpr {
                 scope,
-                kind: GlobalExprKind::Cast(
-                    lhs,
-                    TyRef {
-                        scope: ScopeRef::Scope(scope),
-                        ty: rhs,
-                    },
-                ),
+                kind: GlobalExprKind::Cast(lhs, TyRef { scope, ty: rhs }),
                 span: expr.span,
             });
             def

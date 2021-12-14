@@ -194,12 +194,12 @@ pub struct Stmt {
 
 #[derive(Debug, Clone, Hash)]
 pub enum StmtKind {
+    Block(Block),
     Struct(Struct),
     Fn(Fn),
     Let(Let),
     If(If),
     For(For),
-    Block(Block),
     Break(Break),
     Continue(Continue),
     Return(Return),

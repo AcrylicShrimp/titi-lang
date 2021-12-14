@@ -1,18 +1,36 @@
-use crate::make_global::{GlobalFn, GlobalFnHeader};
+use crate::make_global::{
+    GlobalExpr, GlobalFn, GlobalFnHeader, GlobalFnParam, GlobalInnerStruct, GlobalScope,
+    GlobalStmt, GlobalStruct,
+};
 use crate::{FunctionDef, FunctionHeaderDef, ScopeRef, TyRef};
 use ast::{Fn, FnHeader, FnParam};
 
-use super::GlobalFnParam;
+use super::make_global_stmt_block;
 
 pub fn make_global_fn(
+    global_scopes: &mut Vec<GlobalScope>,
+    global_structs: &mut Vec<GlobalStruct>,
+    global_inner_structs: &mut Vec<GlobalInnerStruct>,
     global_fns: &mut Vec<GlobalFn>,
     global_fn_headers: &mut Vec<GlobalFnHeader>,
+    global_stmts: &mut Vec<GlobalStmt>,
+    global_exprs: &mut Vec<GlobalExpr>,
     scope: ScopeRef,
     function: Fn,
 ) -> FunctionDef {
     let global_fn = GlobalFn {
         header: make_global_fn_header(global_fn_headers, scope, function.header),
-        body: todo!(),
+        body: make_global_stmt_block(
+            global_scopes,
+            global_structs,
+            global_inner_structs,
+            global_fns,
+            global_fn_headers,
+            global_stmts,
+            global_exprs,
+            scope,
+            function.body,
+        ),
         span: function.span,
     };
     let def = global_fns.len();
