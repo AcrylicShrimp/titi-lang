@@ -1,47 +1,34 @@
-use crate::make_global::{
-    GlobalExpr, GlobalFn, GlobalFnHeader, GlobalFnParam, GlobalInnerStruct, GlobalScope,
-    GlobalStmt, GlobalStruct,
-};
-use crate::{FunctionDef, FunctionHeaderDef, ScopeRef, TyRef};
-use ast::{Fn, FnHeader, FnParam, Literal};
-
-use super::make_global_stmt_block;
+use super::in_fn::{make_in_fn_block, InFnContext, InFnScope, InFnScopeKind};
+use crate::make_global::{GlobalFn, GlobalFnHeader, GlobalFnParam};
+use crate::{FunctionDef, FunctionHeaderDef, GlobalContextWithoutModule, ScopeRef, TyRef};
+use ast::{Fn, FnHeader, FnParam};
 
 pub fn make_global_fn(
-    global_scopes: &mut Vec<GlobalScope>,
-    global_structs: &mut Vec<GlobalStruct>,
-    global_inner_structs: &mut Vec<GlobalInnerStruct>,
-    global_fns: &mut Vec<GlobalFn>,
-    global_fn_headers: &mut Vec<GlobalFnHeader>,
-    global_stmts: &mut Vec<GlobalStmt>,
-    global_exprs: &mut Vec<GlobalExpr>,
-    global_lits: &mut Vec<Literal>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     function: Fn,
 ) -> FunctionDef {
+    let mut ctx = InFnContext::new(scope.module);
+    let root_scope = ctx.push_scope(InFnScope {
+        module: scope.module,
+        parent: None,
+        kind: InFnScopeKind::Block,
+    });
+    let block = make_in_fn_block(global_ctx, &mut ctx, root_scope, function.body);
     let global_fn = GlobalFn {
-        header: make_global_fn_header(global_fn_headers, scope, function.header),
-        body: make_global_stmt_block(
-            global_scopes,
-            global_structs,
-            global_inner_structs,
-            global_fns,
-            global_fn_headers,
-            global_stmts,
-            global_exprs,
-            global_lits,
-            scope,
-            function.body,
-        ),
+        header: make_global_fn_header(global_ctx, scope, function.header),
+        ctx,
+        scope: root_scope,
+        body: block,
         span: function.span,
     };
-    let def = global_fns.len();
-    global_fns.push(global_fn);
+    let def = global_ctx.fns.len();
+    global_ctx.fns.push(global_fn);
     FunctionDef(def)
 }
 
 pub fn make_global_fn_header(
-    global_fn_headers: &mut Vec<GlobalFnHeader>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     header: FnHeader,
 ) -> FunctionHeaderDef {
@@ -55,8 +42,8 @@ pub fn make_global_fn_header(
         return_ty: header.return_ty.map(|ty| TyRef { scope, ty }),
         span: header.span,
     };
-    let def = global_fn_headers.len();
-    global_fn_headers.push(global_fn_header);
+    let def = global_ctx.fn_headers.len();
+    global_ctx.fn_headers.push(global_fn_header);
     FunctionHeaderDef(def)
 }
 

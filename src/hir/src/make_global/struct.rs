@@ -2,12 +2,11 @@ use crate::make_global::{
     GlobalInnerStruct, GlobalInnerStructField, GlobalStruct, GlobalStructField,
     GlobalStructFieldKind,
 };
-use crate::{InnerStructDef, ScopeRef, StructDef, TyRef};
+use crate::{GlobalContextWithoutModule, InnerStructDef, ScopeRef, StructDef, TyRef};
 use ast::{InnerStruct, InnerStructField, Struct, StructField, StructFieldKind};
 
 pub fn make_global_struct(
-    global_structs: &mut Vec<GlobalStruct>,
-    global_inner_structs: &mut Vec<GlobalInnerStruct>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     r#struct: Struct,
 ) -> StructDef {
@@ -16,17 +15,17 @@ pub fn make_global_struct(
         fields: r#struct
             .fields
             .into_iter()
-            .map(|field| make_global_struct_field(global_inner_structs, scope, field))
+            .map(|field| make_global_struct_field(global_ctx, scope, field))
             .collect(),
         span: r#struct.span,
     };
-    let def = global_structs.len();
-    global_structs.push(global_struct);
+    let def = global_ctx.structs.len();
+    global_ctx.structs.push(global_struct);
     StructDef(def)
 }
 
 fn make_global_struct_field(
-    global_inner_structs: &mut Vec<GlobalInnerStruct>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     field: StructField,
 ) -> GlobalStructField {
@@ -35,16 +34,16 @@ fn make_global_struct_field(
         name: field.name,
         kind: match field.kind {
             StructFieldKind::Plain(ty) => GlobalStructFieldKind::Plain(TyRef { scope, ty }),
-            StructFieldKind::Struct(inner) => GlobalStructFieldKind::Struct(
-                make_global_inner_struct(global_inner_structs, scope, inner),
-            ),
+            StructFieldKind::Struct(inner) => {
+                GlobalStructFieldKind::Struct(make_global_inner_struct(global_ctx, scope, inner))
+            }
         },
         span: field.span,
     }
 }
 
 pub fn make_global_inner_struct(
-    global_inner_structs: &mut Vec<GlobalInnerStruct>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     inner: InnerStruct,
 ) -> InnerStructDef {
@@ -52,17 +51,17 @@ pub fn make_global_inner_struct(
         fields: inner
             .fields
             .into_iter()
-            .map(|field| make_global_inner_struct_field(global_inner_structs, scope, field))
+            .map(|field| make_global_inner_struct_field(global_ctx, scope, field))
             .collect(),
         span: inner.span,
     };
-    let def = global_inner_structs.len();
-    global_inner_structs.push(global_inner_struct);
+    let def = global_ctx.inner_structs.len();
+    global_ctx.inner_structs.push(global_inner_struct);
     InnerStructDef(def)
 }
 
 fn make_global_inner_struct_field(
-    global_inner_structs: &mut Vec<GlobalInnerStruct>,
+    global_ctx: &mut GlobalContextWithoutModule,
     scope: ScopeRef,
     field: InnerStructField,
 ) -> GlobalInnerStructField {
@@ -70,9 +69,9 @@ fn make_global_inner_struct_field(
         name: field.name,
         kind: match field.kind {
             StructFieldKind::Plain(ty) => GlobalStructFieldKind::Plain(TyRef { scope, ty }),
-            StructFieldKind::Struct(inner) => GlobalStructFieldKind::Struct(
-                make_global_inner_struct(global_inner_structs, scope, inner),
-            ),
+            StructFieldKind::Struct(inner) => {
+                GlobalStructFieldKind::Struct(make_global_inner_struct(global_ctx, scope, inner))
+            }
         },
         span: field.span,
     }
