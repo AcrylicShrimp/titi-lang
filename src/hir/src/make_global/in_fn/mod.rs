@@ -129,7 +129,7 @@ pub struct InFnScope {
     pub kind: InFnScopeKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum InFnScopeKind {
     Block,
     Struct(StructDef),

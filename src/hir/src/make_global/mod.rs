@@ -2,18 +2,16 @@ mod function;
 mod in_fn;
 mod r#struct;
 
+pub use in_fn::*;
+
 use crate::{ResolvedContext, ResolvedModule};
 use ast::*;
 use function::*;
-use in_fn::*;
 use r#struct::*;
 use span::Span;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModuleDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ScopeDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StructDef(pub usize);
