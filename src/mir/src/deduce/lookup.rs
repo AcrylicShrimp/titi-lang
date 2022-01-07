@@ -1,6 +1,6 @@
 use crate::{
-    MirContext, MirFunctionDef, MirFunctionHeaderDef, MirStructDef, MirTy, MirTyDef, MirTyKind,
-    MirTyRefKind,
+    MirContext, MirFunctionDef, MirFunctionHeaderDef, MirStructDef, MirTy, MirTyDef, MirTyFn,
+    MirTyKind, MirTyRefKind,
 };
 use ast::{ExternKind, SubTy, TopLevelItemPrefixKind, TyKind, TyRefKind, TyUserDef, VisKind};
 use high_lexer::Symbol;
@@ -29,6 +29,7 @@ pub fn resolve_ty(
 ) -> Result<MirTyDef, LookupError> {
     Ok(match &ty.ty.sub_ty.kind {
         TyKind::Bool => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Bool,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -36,6 +37,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::Byte => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Byte,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -43,6 +45,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::Char => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Char,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -50,6 +53,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::I64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::I64,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -57,6 +61,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::U64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::U64,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -64,6 +69,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::Isize => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Isize,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -71,6 +77,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::Usize => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Usize,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -78,6 +85,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::F64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::F64,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -85,6 +93,7 @@ pub fn resolve_ty(
             }),
         }),
         TyKind::Str => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Str,
             ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                 TyRefKind::Cref => MirTyRefKind::Cref,
@@ -94,6 +103,7 @@ pub fn resolve_ty(
         TyKind::Cptr(inner_ty) => {
             let def = resolve_sub_ty(global_ctx, ctx, scope, mir_ctx, inner_ty)?;
             mir_ctx.push_ty(MirTy {
+                temporary: false,
                 kind: MirTyKind::Cptr(def),
                 ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                     TyRefKind::Cref => MirTyRefKind::Cref,
@@ -104,6 +114,7 @@ pub fn resolve_ty(
         TyKind::Mptr(inner_ty) => {
             let def = resolve_sub_ty(global_ctx, ctx, scope, mir_ctx, inner_ty)?;
             mir_ctx.push_ty(MirTy {
+                temporary: false,
                 kind: MirTyKind::Cptr(def),
                 ref_kind: ty.ty.ref_kind.as_ref().map(|ref_kind| match ref_kind {
                     TyRefKind::Cref => MirTyRefKind::Cref,
@@ -124,44 +135,54 @@ pub fn resolve_sub_ty(
 ) -> Result<MirTyDef, LookupError> {
     Ok(match &ty.kind {
         TyKind::Bool => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Bool,
             ref_kind: None,
         }),
         TyKind::Byte => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Byte,
             ref_kind: None,
         }),
         TyKind::Char => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Char,
             ref_kind: None,
         }),
         TyKind::I64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::I64,
             ref_kind: None,
         }),
         TyKind::U64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::U64,
             ref_kind: None,
         }),
         TyKind::Isize => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Isize,
             ref_kind: None,
         }),
         TyKind::Usize => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Usize,
             ref_kind: None,
         }),
         TyKind::F64 => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::F64,
             ref_kind: None,
         }),
         TyKind::Str => mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Str,
             ref_kind: None,
         }),
         TyKind::Cptr(inner_ty) => {
             let def = resolve_sub_ty(global_ctx, ctx, scope, mir_ctx, inner_ty)?;
             mir_ctx.push_ty(MirTy {
+                temporary: false,
                 kind: MirTyKind::Cptr(def),
                 ref_kind: None,
             })
@@ -169,6 +190,7 @@ pub fn resolve_sub_ty(
         TyKind::Mptr(inner_ty) => {
             let def = resolve_sub_ty(global_ctx, ctx, scope, mir_ctx, inner_ty)?;
             mir_ctx.push_ty(MirTy {
+                temporary: false,
                 kind: MirTyKind::Mptr(def),
                 ref_kind: None,
             })
@@ -264,6 +286,7 @@ pub fn lookup_module(
         }
 
         Ok(mir_ctx.push_ty(MirTy {
+            temporary: false,
             kind: MirTyKind::Struct(MirStructDef(r#struct.def.0)),
             ref_kind: None,
         }))
@@ -290,7 +313,17 @@ pub fn lookup_module(
         }
 
         Ok(mir_ctx.push_ty(MirTy {
-            kind: MirTyKind::Fn(MirFunctionDef(r#fn.def.0)),
+            temporary: false,
+            kind: MirTyKind::Fn({
+                let header = &global_ctx.fn_headers[global_ctx.fns[r#fn.def.0].header.0];
+                MirTyFn {
+                    params: todo!(),
+                    return_ty: match header.return_ty {
+                        Some(ty) => todo!(),
+                        None => todo!(),
+                    },
+                }
+            }),
             ref_kind: None,
         }))
     } else if let Some(index) = global_ctx.modules[module.0]
@@ -303,7 +336,17 @@ pub fn lookup_module(
         // We can skip the visibility check here because the fn headers are always public currently.
 
         Ok(mir_ctx.push_ty(MirTy {
-            kind: MirTyKind::FnHeader(MirFunctionHeaderDef(fn_header.def.0)),
+            temporary: false,
+            kind: MirTyKind::Fn({
+                let header = &global_ctx.fn_headers[fn_header.def.0];
+                MirTyFn {
+                    params: todo!(),
+                    return_ty: match header.return_ty {
+                        Some(ty) => todo!(),
+                        None => todo!(),
+                    },
+                }
+            }),
             ref_kind: None,
         }))
     } else {
@@ -324,6 +367,7 @@ pub fn lookup_local(
         match ctx.scopes[def.0].kind {
             InFnScopeKind::Struct(r#struct) if global_ctx.structs[r#struct.0].name.symbol == id => {
                 return Some(mir_ctx.push_ty(MirTy {
+                    temporary: false,
                     kind: MirTyKind::Struct(MirStructDef(r#struct.0)),
                     ref_kind: None,
                 }));
@@ -335,7 +379,17 @@ pub fn lookup_local(
                     == id
                 {
                     return Some(mir_ctx.push_ty(MirTy {
-                        kind: MirTyKind::Fn(MirFunctionDef(r#fn.0)),
+                        temporary: false,
+                        kind: MirTyKind::Fn({
+                            let header = &global_ctx.fn_headers[global_ctx.fns[r#fn.0].header.0];
+                            MirTyFn {
+                                params: todo!(),
+                                return_ty: match header.return_ty {
+                                    Some(ty) => todo!(),
+                                    None => todo!(),
+                                },
+                            }
+                        }),
                         ref_kind: None,
                     }));
                 }

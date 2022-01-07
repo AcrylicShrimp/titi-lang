@@ -175,11 +175,25 @@ pub enum MirStmtKind {
 
 #[derive(Debug, Clone)]
 pub struct MirTy {
+    pub temporary: bool,
     pub kind: MirTyKind,
     pub ref_kind: Option<MirTyRefKind>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+impl MirTy {
+    pub fn is_assignable(&self) -> bool {
+        if let Some(ref_kind) = self.ref_kind {
+            return match ref_kind {
+                MirTyRefKind::Cref => false,
+                MirTyRefKind::Mref => true,
+            };
+        }
+
+        !self.temporary
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MirTyKind {
     None,
     Bool,
@@ -197,8 +211,13 @@ pub enum MirTyKind {
     RangeInclusive(MirTyDef, MirTyDef),
     Struct(MirStructDef),
     InnerStruct(MirInnerStructDef),
-    Fn(MirFunctionDef),
-    FnHeader(MirFunctionHeaderDef),
+    Fn(MirTyFn),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MirTyFn {
+    pub params: Vec<MirTyDef>,
+    pub return_ty: MirTyDef,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
