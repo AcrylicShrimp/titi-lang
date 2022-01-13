@@ -8,7 +8,7 @@ impl StrIdx {
         Self(unsafe { NonZeroU32::new_unchecked(index) })
     }
 
-    pub const fn new_const(index: u32) -> StrIdx {
+    pub const fn new_const(index: u32) -> Self {
         Self(unsafe { NonZeroU32::new_unchecked(index) })
     }
 }

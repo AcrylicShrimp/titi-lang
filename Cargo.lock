@@ -144,6 +144,9 @@ dependencies = [
  "diagnostic",
  "high_lexer",
  "hir",
+ "lazy_static",
+ "parking_lot",
+ "rustc-hash",
  "span",
 ]
 

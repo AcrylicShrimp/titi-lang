@@ -1250,6 +1250,22 @@ fn parse_expr_unary(
             span: span.to(expr.span),
             kind: ExprKind::BitNot(Box::new(expr)),
         })
+    } else if parser.expect_keyword(SIZEOF) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        parse_ty(parser).map(|ty| Expr {
+            span: span.to(ty.span),
+            kind: ExprKind::SizeOf(ty),
+        })
+    } else if parser.expect_keyword(ADDROF) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
+            span: span.to(expr.span),
+            kind: ExprKind::AddrOf(Box::new(expr)),
+        })
     } else {
         parse_expr_single_and_member(parser, allow_object_literal)
     }
@@ -1259,114 +1275,66 @@ fn parse_expr_single_and_member(
     parser: &mut Parser<impl Iterator<Item = Token>>,
     allow_object_literal: bool,
 ) -> Result<Expr, (String, Span)> {
-    if parser.expect_kind(TokenKind::LogNot) {
-        let span = parser.span();
-
-        parser.expect_begin();
-        if allow_object_literal {
-            parse_expr_object(parser)
-        } else {
-            parse_expr_item(parser)
-        }
-        .map(|expr| Expr {
-            span: span.to(expr.span),
-            kind: ExprKind::LogNot(Box::new(expr)),
-        })
-    } else if parser.expect_kind(TokenKind::Add) {
-        parser.expect_begin();
-        if allow_object_literal {
-            parse_expr_object(parser)
-        } else {
-            parse_expr_item(parser)
-        }
-    } else if parser.expect_kind(TokenKind::Sub) {
-        let span = parser.span();
-
-        parser.expect_begin();
-        if allow_object_literal {
-            parse_expr_object(parser)
-        } else {
-            parse_expr_item(parser)
-        }
-        .map(|expr| Expr {
-            span: span.to(expr.span),
-            kind: ExprKind::Neg(Box::new(expr)),
-        })
-    } else if parser.expect_kind(TokenKind::BitNot) {
-        let span = parser.span();
-
-        parser.expect_begin();
-        if allow_object_literal {
-            parse_expr_object(parser)
-        } else {
-            parse_expr_item(parser)
-        }
-        .map(|expr| Expr {
-            span: span.to(expr.span),
-            kind: ExprKind::BitNot(Box::new(expr)),
-        })
+    let mut item = if allow_object_literal {
+        parse_expr_object(parser)
     } else {
-        let mut item = if allow_object_literal {
-            parse_expr_object(parser)
-        } else {
-            parse_expr_item(parser)
-        }?;
+        parse_expr_item(parser)
+    }?;
 
-        while parser.exists() {
+    while parser.exists() {
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::OpenParen) {
+            let mut args = vec![];
+
+            while !parser.expect_kind(TokenKind::CloseParen) {
+                if !parser.exists() {
+                    return Err(parser.expect_else());
+                }
+
+                args.push(parse_expr(parser, true)?);
+
+                parser.expect_begin();
+                parser.expect_kind(TokenKind::Comma);
+            }
+
+            item = Expr {
+                span: item.span.to(parser.span()),
+                kind: ExprKind::Call(Box::new(item), args),
+            }
+        } else if parser.expect_kind(TokenKind::OpenBracket) {
+            let expr = parse_expr(parser, true)?;
+
             parser.expect_begin();
-            if parser.expect_kind(TokenKind::OpenParen) {
-                let mut args = vec![];
+            if !parser.expect_kind(TokenKind::CloseBracket) {
+                return Err(parser.expect_else());
+            }
 
-                while !parser.expect_kind(TokenKind::CloseParen) {
-                    if !parser.exists() {
-                        return Err(parser.expect_else());
-                    }
-
-                    args.push(parse_expr(parser, true)?);
-
-                    parser.expect_begin();
-                    parser.expect_kind(TokenKind::Comma);
-                }
-
+            item = Expr {
+                span: item.span.to(parser.span()),
+                kind: ExprKind::Index(Box::new(item), Box::new(expr)),
+            }
+        } else if parser.expect_kind(TokenKind::Dot) {
+            parser.expect_begin();
+            if let Some(id) = parser.expect_id() {
                 item = Expr {
                     span: item.span.to(parser.span()),
-                    kind: ExprKind::Call(Box::new(item), args),
-                }
-            } else if parser.expect_kind(TokenKind::OpenBracket) {
-                let expr = parse_expr(parser, true)?;
-
-                parser.expect_begin();
-                if !parser.expect_kind(TokenKind::CloseBracket) {
-                    return Err(parser.expect_else());
-                }
-
-                item = Expr {
-                    span: item.span.to(parser.span()),
-                    kind: ExprKind::Index(Box::new(item), Box::new(expr)),
-                }
-            } else if parser.expect_kind(TokenKind::Dot) {
-                parser.expect_begin();
-                if let Some(id) = parser.expect_id() {
-                    item = Expr {
-                        span: item.span.to(parser.span()),
-                        kind: ExprKind::Member(
-                            Box::new(item),
-                            SymbolWithSpan {
-                                symbol: id,
-                                span: parser.span(),
-                            },
-                        ),
-                    }
-                } else {
-                    return Err(parser.expect_else());
+                    kind: ExprKind::Member(
+                        Box::new(item),
+                        SymbolWithSpan {
+                            symbol: id,
+                            span: parser.span(),
+                        },
+                    ),
                 }
             } else {
-                break;
+                return Err(parser.expect_else());
             }
+        } else {
+            break;
         }
-
-        Ok(item)
     }
+
+    Ok(item)
 }
 
 fn parse_expr_object(

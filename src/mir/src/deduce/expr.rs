@@ -2,17 +2,34 @@ use crate::{MirContext, MirStructFieldKind, MirTy, MirTyDef, MirTyKind, MirTyRef
 use hir::{GlobalContext, InFnContext, InFnExprDef, InFnExprKind, InFnScopeDef, ScopeRef};
 use std::collections::HashMap;
 
-pub struct BinaryOpMap {
-    
+#[derive(Default, Debug, Clone)]
+pub struct BinaryOpTyMap {
+    pub map: HashMap<BinaryOpKind, Vec<BinaryOpTy>>,
 }
 
-pub struct BinaryOp {
+impl BinaryOpTyMap {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn search(&self, op: BinaryOpKind, lhs: &MirTy, rhs: &MirTy) -> Option<&BinaryOpTy> {
+        let tys = if let Some(tys) = self.map.get(&op) {
+            tys
+        } else {
+            return None;
+        };
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BinaryOpTy {
     pub kind: BinaryOpKind,
     pub lhs: MirTyDef,
     pub rhs: MirTyDef,
     pub return_ty: MirTyDef,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -66,7 +83,7 @@ pub fn deduce_expr(
             ),
             ref_kind: None,
         },
-        InFnExprKind::Eq(lhs, rhs) => {}
+        InFnExprKind::Eq(lhs, rhs) => todo!(),
         InFnExprKind::Ne(_, _) => todo!(),
         InFnExprKind::Lt(_, _) => todo!(),
         InFnExprKind::Gt(_, _) => todo!(),
@@ -92,6 +109,8 @@ pub fn deduce_expr(
         InFnExprKind::Call(_, _) => todo!(),
         InFnExprKind::Index(_, _) => todo!(),
         InFnExprKind::Member(_, _) => todo!(),
+        InFnExprKind::SizeOf(_) => todo!(),
+        InFnExprKind::AddrOf(_) => todo!(),
         InFnExprKind::Deref(_) => todo!(),
         InFnExprKind::Id(_) => todo!(),
         InFnExprKind::Literal(_) => todo!(),

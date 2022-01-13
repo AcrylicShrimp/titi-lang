@@ -312,6 +312,8 @@ pub enum ExprKind {
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Member(Box<Expr>, SymbolWithSpan),
+    SizeOf(Ty),
+    AddrOf(Box<Expr>),
     Deref(Box<Expr>),
     Id(SymbolWithSpan),
     Literal(Literal),

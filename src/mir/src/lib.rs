@@ -2,12 +2,14 @@ mod deduce;
 mod transform;
 mod transform_expr;
 mod transform_expr_lhs;
+mod ty_interner;
 
 pub use transform::*;
 
 use ast::{SymbolWithSpan, Vis};
 use hir::ModuleDef;
 use span::Span;
+use ty_interner::Ty;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MirStructDef(pub usize);
@@ -20,9 +22,6 @@ pub struct MirFunctionDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MirFunctionHeaderDef(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MirTyDef(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MirStmtDef(pub usize);
@@ -39,7 +38,6 @@ pub struct MirContext {
     pub inner_structs: Vec<MirInnerStruct>,
     pub fns: Vec<MirFn>,
     pub fn_headers: Vec<MirFnHeader>,
-    pub tys: Vec<MirTy>,
 }
 
 impl MirContext {
@@ -64,12 +62,6 @@ impl MirContext {
     pub fn push_fn_header(&mut self, fn_header: MirFnHeader) -> MirFunctionHeaderDef {
         let def = MirFunctionHeaderDef(self.fn_headers.len());
         self.fn_headers.push(fn_header);
-        def
-    }
-
-    pub fn push_ty(&mut self, ty: MirTy) -> MirTyDef {
-        let def = MirTyDef(self.tys.len());
-        self.tys.push(ty);
         def
     }
 }
@@ -99,7 +91,7 @@ pub struct MirStructField {
 
 #[derive(Debug)]
 pub enum MirStructFieldKind {
-    Plain(MirTyDef),
+    Plain(Ty),
     Struct(MirInnerStructDef),
 }
 
@@ -127,14 +119,14 @@ pub struct MirFn {
 pub struct MirFnHeader {
     pub name: SymbolWithSpan,
     pub params: Vec<MirFnParam>,
-    pub return_ty: Option<MirTyDef>,
+    pub return_ty: Option<Ty>,
     pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct MirFnParam {
     pub name: SymbolWithSpan,
-    pub ty: MirTyDef,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -160,7 +152,7 @@ pub enum MirScopeKind {
 #[derive(Debug)]
 pub struct MirScopeLet {
     pub name: SymbolWithSpan,
-    pub ty: MirTyDef,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -173,15 +165,14 @@ pub enum MirStmtKind {
     Return(Option<MirExprDef>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MirTy {
-    pub temporary: bool,
     pub kind: MirTyKind,
     pub ref_kind: Option<MirTyRefKind>,
 }
 
 impl MirTy {
-    pub fn is_assignable(&self) -> bool {
+    pub fn is_addressable(&self) -> bool {
         if let Some(ref_kind) = self.ref_kind {
             return match ref_kind {
                 MirTyRefKind::Cref => false,
@@ -189,7 +180,7 @@ impl MirTy {
             };
         }
 
-        !self.temporary
+        false
     }
 }
 
@@ -205,10 +196,10 @@ pub enum MirTyKind {
     Usize,
     F64,
     Str,
-    Cptr(MirTyDef),
-    Mptr(MirTyDef),
-    Range(MirTyDef, MirTyDef),
-    RangeInclusive(MirTyDef, MirTyDef),
+    Cptr(Ty),
+    Mptr(Ty),
+    Range(Ty, Ty),
+    RangeInclusive(Ty, Ty),
     Struct(MirStructDef),
     InnerStruct(MirInnerStructDef),
     Fn(MirTyFn),
@@ -216,8 +207,8 @@ pub enum MirTyKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MirTyFn {
-    pub params: Vec<MirTyDef>,
-    pub return_ty: MirTyDef,
+    pub params: Vec<Ty>,
+    pub return_ty: Ty,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -228,7 +219,7 @@ pub enum MirTyRefKind {
 
 #[derive(Debug)]
 pub struct MirExpr {
-    pub ty: MirTyDef,
+    pub ty: Ty,
     pub kind: MirExprKind,
     pub span: Span,
 }

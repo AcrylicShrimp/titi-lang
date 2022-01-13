@@ -278,6 +278,8 @@ pub enum InFnExprKind {
     Call(InFnExprDef, Vec<InFnExprDef>),
     Index(InFnExprDef, InFnExprDef),
     Member(InFnExprDef, SymbolWithSpan),
+    SizeOf(TyRef),
+    AddrOf(InFnExprDef),
     Deref(InFnExprDef),
     Id(SymbolWithSpan),
     Literal(InFnLitDef),

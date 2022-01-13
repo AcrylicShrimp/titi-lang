@@ -11,4 +11,7 @@ ast = { path = "../ast" }
 diagnostic = { path = "../diagnostic", features = ["global_instance"] }
 high_lexer = { path = "../high_lexer" }
 hir = { path = "../hir" }
+lazy_static = "1"
+parking_lot = "0.11"
+rustc-hash = "1"
 span = { path = "../span" }

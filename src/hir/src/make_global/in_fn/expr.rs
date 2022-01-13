@@ -177,6 +177,20 @@ pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -
                 span: expr.span,
             })
         }
+        ExprKind::SizeOf(lhs) => ctx.push_expr(InFnExpr {
+            scope,
+            kind: InFnExprKind::SizeOf(TyRef {
+                scope: ScopeRef {
+                    module: ctx.module,
+                    scope: Some(scope),
+                },
+                ty: lhs,
+            }),
+            span: expr.span,
+        }),
+        ExprKind::AddrOf(lhs) => {
+            make_in_fn_expr_impl! {InFnExprKind::AddrOf, lhs => ctx, scope, expr}
+        }
         ExprKind::Deref(lhs) => {
             make_in_fn_expr_impl! {InFnExprKind::Deref, lhs => ctx, scope, expr}
         }
