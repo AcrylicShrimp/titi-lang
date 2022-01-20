@@ -51,22 +51,6 @@ pub fn deduce_expr(
     }
 
     let ty = match &ctx.exprs[expr.0].kind {
-        InFnExprKind::Assign(..)
-        | InFnExprKind::AssignAdd(..)
-        | InFnExprKind::AssignSub(..)
-        | InFnExprKind::AssignMul(..)
-        | InFnExprKind::AssignDiv(..)
-        | InFnExprKind::AssignMod(..)
-        | InFnExprKind::AssignShl(..)
-        | InFnExprKind::AssignShr(..)
-        | InFnExprKind::AssignBitOr(..)
-        | InFnExprKind::AssignBitAnd(..)
-        | InFnExprKind::AssignBitXor(..)
-        | InFnExprKind::AssignBitNot(..) => MirTy {
-            temporary: true,
-            kind: MirTyKind::None,
-            ref_kind: None,
-        },
         &InFnExprKind::Rng(lhs, rhs) => MirTy {
             temporary: true,
             kind: MirTyKind::Range(

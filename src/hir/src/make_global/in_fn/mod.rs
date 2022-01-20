@@ -210,6 +210,7 @@ pub enum InFnStmtKind {
     Break(InFnStmtBreak),
     Continue(InFnStmtContinue),
     Return(InFnStmtReturn),
+    Assign(InFnStmtAssign),
     Expr(InFnExprDef),
 }
 
@@ -230,6 +231,30 @@ pub struct InFnStmtReturn {
 }
 
 #[derive(Debug)]
+pub struct InFnStmtAssign {
+    pub lhs: InFnExprDef,
+    pub rhs: InFnExprDef,
+    pub kind: InFnStmtAssignKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum InFnStmtAssignKind {
+    Assign,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Shl,
+    Shr,
+    BitOr,
+    BitAnd,
+    BitXor,
+    BitNot,
+}
+
+#[derive(Debug)]
 pub struct InFnExpr {
     pub scope: InFnScopeDef,
     pub kind: InFnExprKind,
@@ -238,18 +263,6 @@ pub struct InFnExpr {
 
 #[derive(Debug)]
 pub enum InFnExprKind {
-    Assign(InFnExprDef, InFnExprDef),
-    AssignAdd(InFnExprDef, InFnExprDef),
-    AssignSub(InFnExprDef, InFnExprDef),
-    AssignMul(InFnExprDef, InFnExprDef),
-    AssignDiv(InFnExprDef, InFnExprDef),
-    AssignMod(InFnExprDef, InFnExprDef),
-    AssignShl(InFnExprDef, InFnExprDef),
-    AssignShr(InFnExprDef, InFnExprDef),
-    AssignBitOr(InFnExprDef, InFnExprDef),
-    AssignBitAnd(InFnExprDef, InFnExprDef),
-    AssignBitXor(InFnExprDef, InFnExprDef),
-    AssignBitNot(InFnExprDef, InFnExprDef),
     Rng(InFnExprDef, InFnExprDef),
     RngInclusive(InFnExprDef, InFnExprDef),
     Eq(InFnExprDef, InFnExprDef),

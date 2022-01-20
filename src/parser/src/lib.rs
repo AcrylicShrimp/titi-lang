@@ -813,15 +813,140 @@ fn parse_stmt(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Stmt, 
         })
     } else {
         let expr = parse_expr(parser, true)?;
+        let span = expr.span;
 
         parser.expect_begin();
+        let kind = if parser.expect_kind(TokenKind::Assign) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Assign,
+            })
+        } else if parser.expect_kind(TokenKind::AssignAdd) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Add,
+            })
+        } else if parser.expect_kind(TokenKind::AssignSub) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Sub,
+            })
+        } else if parser.expect_kind(TokenKind::AssignMul) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Mul,
+            })
+        } else if parser.expect_kind(TokenKind::AssignDiv) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Div,
+            })
+        } else if parser.expect_kind(TokenKind::AssignMod) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Mod,
+            })
+        } else if parser.expect_kind(TokenKind::AssignShl) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Shl,
+            })
+        } else if parser.expect_kind(TokenKind::AssignShr) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::Shr,
+            })
+        } else if parser.expect_kind(TokenKind::AssignBitOr) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::BitOr,
+            })
+        } else if parser.expect_kind(TokenKind::AssignBitAnd) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::BitAnd,
+            })
+        } else if parser.expect_kind(TokenKind::AssignBitXor) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::BitXor,
+            })
+        } else if parser.expect_kind(TokenKind::AssignBitNot) {
+            parser.expect_begin();
+            let rhs = parse_expr(parser, true)?;
+
+            StmtKind::Assign(Assign {
+                span: expr.span.to(rhs.span),
+                lhs: expr,
+                rhs,
+                kind: AssignKind::BitNot,
+            })
+        } else {
+            StmtKind::Expr(expr)
+        };
+
         if !parser.expect_kind(TokenKind::Semicolon) {
             return Err(parser.expect_else());
         }
 
         Ok(Stmt {
-            span: expr.span.to(parser.span()),
-            kind: StmtKind::Expr(expr),
+            span: span.to(parser.span()),
+            kind,
         })
     }
 }
@@ -830,91 +955,7 @@ fn parse_expr(
     parser: &mut Parser<impl Iterator<Item = Token>>,
     allow_object_literal: bool,
 ) -> Result<Expr, (String, Span)> {
-    parse_assign(parser, allow_object_literal)
-}
-
-fn parse_assign(
-    parser: &mut Parser<impl Iterator<Item = Token>>,
-    allow_object_literal: bool,
-) -> Result<Expr, (String, Span)> {
-    let item = parse_expr_binary_log_or(parser, allow_object_literal)?;
-
-    parser.expect_begin();
-    if parser.expect_kind(TokenKind::Assign) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::Assign(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignAdd) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignAdd(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignSub) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignSub(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignMul) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignMul(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignDiv) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignDiv(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignMod) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignMod(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignShl) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignShl(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignShr) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignShr(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignBitOr) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignBitOr(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignBitAnd) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignBitAnd(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignBitXor) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignBitXor(Box::new(item), Box::new(rhs)),
-        })
-    } else if parser.expect_kind(TokenKind::AssignBitNot) {
-        let rhs = parse_expr_binary_log_or(parser, allow_object_literal)?;
-        Ok(Expr {
-            span: item.span.to(rhs.span),
-            kind: ExprKind::AssignBitNot(Box::new(item), Box::new(rhs)),
-        })
-    } else {
-        Ok(item)
-    }
+    parse_expr_binary_log_or(parser, allow_object_literal)
 }
 
 fn parse_expr_binary_log_or(

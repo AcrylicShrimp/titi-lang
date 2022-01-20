@@ -6,9 +6,9 @@ use super::{
 };
 use crate::{
     make_global::{function::make_global_fn, r#struct::make_global_struct},
-    GlobalContextWithoutModule, ScopeRef, TyRef,
+    GlobalContextWithoutModule, InFnStmtAssign, InFnStmtAssignKind, ScopeRef, TyRef,
 };
-use ast::{Block, ElseKind, For, ForKind, If, Let, LetKind, Stmt, StmtKind};
+use ast::{AssignKind, Block, ElseKind, For, ForKind, If, Let, LetKind, Stmt, StmtKind};
 
 pub fn make_in_fn_stmt(
     global_ctx: &mut GlobalContextWithoutModule,
@@ -129,6 +129,32 @@ pub fn make_in_fn_stmt(
             ctx.push_stmt(InFnStmt {
                 scope,
                 kind: InFnStmtKind::Return(r#return),
+                span: stmt.span,
+            })
+        }
+        StmtKind::Assign(assign) => {
+            let assign = InFnStmtAssign {
+                lhs: make_in_fn_expr(ctx, scope, assign.lhs),
+                rhs: make_in_fn_expr(ctx, scope, assign.rhs),
+                kind: match assign.kind {
+                    AssignKind::Assign => InFnStmtAssignKind::Assign,
+                    AssignKind::Add => InFnStmtAssignKind::Add,
+                    AssignKind::Sub => InFnStmtAssignKind::Sub,
+                    AssignKind::Mul => InFnStmtAssignKind::Mul,
+                    AssignKind::Div => InFnStmtAssignKind::Div,
+                    AssignKind::Mod => InFnStmtAssignKind::Mod,
+                    AssignKind::Shl => InFnStmtAssignKind::Shl,
+                    AssignKind::Shr => InFnStmtAssignKind::Shr,
+                    AssignKind::BitOr => InFnStmtAssignKind::BitOr,
+                    AssignKind::BitAnd => InFnStmtAssignKind::BitAnd,
+                    AssignKind::BitXor => InFnStmtAssignKind::BitXor,
+                    AssignKind::BitNot => InFnStmtAssignKind::BitNot,
+                },
+                span: assign.span,
+            };
+            ctx.push_stmt(InFnStmt {
+                scope,
+                kind: InFnStmtKind::Assign(assign),
                 span: stmt.span,
             })
         }

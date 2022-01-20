@@ -203,6 +203,7 @@ pub enum StmtKind {
     Break(Break),
     Continue(Continue),
     Return(Return),
+    Assign(Assign),
     Expr(Expr),
 }
 
@@ -265,6 +266,30 @@ pub struct Return {
 }
 
 #[derive(Debug, Clone, Hash)]
+pub struct Assign {
+    pub lhs: Expr,
+    pub rhs: Expr,
+    pub kind: AssignKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssignKind {
+    Assign,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Shl,
+    Shr,
+    BitOr,
+    BitAnd,
+    BitXor,
+    BitNot,
+}
+
+#[derive(Debug, Clone, Hash)]
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
@@ -272,18 +297,6 @@ pub struct Expr {
 
 #[derive(Debug, Clone, Hash)]
 pub enum ExprKind {
-    Assign(Box<Expr>, Box<Expr>),
-    AssignAdd(Box<Expr>, Box<Expr>),
-    AssignSub(Box<Expr>, Box<Expr>),
-    AssignMul(Box<Expr>, Box<Expr>),
-    AssignDiv(Box<Expr>, Box<Expr>),
-    AssignMod(Box<Expr>, Box<Expr>),
-    AssignShl(Box<Expr>, Box<Expr>),
-    AssignShr(Box<Expr>, Box<Expr>),
-    AssignBitOr(Box<Expr>, Box<Expr>),
-    AssignBitAnd(Box<Expr>, Box<Expr>),
-    AssignBitXor(Box<Expr>, Box<Expr>),
-    AssignBitNot(Box<Expr>, Box<Expr>),
     Rng(Box<Expr>, Box<Expr>),
     RngInclusive(Box<Expr>, Box<Expr>),
     Eq(Box<Expr>, Box<Expr>),

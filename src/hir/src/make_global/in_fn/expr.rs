@@ -24,42 +24,6 @@ macro_rules! make_in_fn_expr_impl {
 
 pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -> InFnExprDef {
     match expr.kind {
-        ExprKind::Assign(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::Assign, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignAdd(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignAdd, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignSub(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignSub, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignMul(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignMul, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignDiv(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignDiv, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignMod(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignMod, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignShl(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignShl, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignShr(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignShr, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignBitOr(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignBitOr, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignBitAnd(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignBitAnd, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignBitXor(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignBitXor, lhs, rhs => ctx, scope, expr}
-        }
-        ExprKind::AssignBitNot(lhs, rhs) => {
-            make_in_fn_expr_impl! {InFnExprKind::AssignBitNot, lhs, rhs => ctx, scope, expr}
-        }
         ExprKind::Rng(lhs, rhs) => {
             make_in_fn_expr_impl! {InFnExprKind::Rng, lhs, rhs => ctx, scope, expr}
         }
