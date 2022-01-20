@@ -1,6 +1,6 @@
 use crate::{
     MirExpr, MirExprCall, MirExprCallTargetKind, MirExprDef, MirExprKind, MirIntrinsic, MirStmt,
-    MirStmtKind, MirTy, MirTyDef, MirTyKind,
+    MirStmtKind, MirTy, MirTyKind,
 };
 // use hir::{ExprDef, GlobalExpr};
 

@@ -1,4 +1,4 @@
-use crate::{MirContext, MirStructFieldKind, MirTy, MirTyDef, MirTyKind, MirTyRefKind};
+use crate::{ty_interner::Ty, MirContext, MirStructFieldKind, MirTy, MirTyKind, MirTyRefKind};
 use hir::{GlobalContext, InFnContext, InFnExprDef, InFnExprKind, InFnScopeDef, ScopeRef};
 use std::collections::HashMap;
 
@@ -12,21 +12,35 @@ impl BinaryOpTyMap {
         Self::default()
     }
 
-    pub fn search(&self, op: BinaryOpKind, lhs: &MirTy, rhs: &MirTy) -> Option<&BinaryOpTy> {
+    pub fn search(&self, op: BinaryOpKind, lhs: Ty, rhs: Ty) -> Option<&BinaryOpTy> {
         let tys = if let Some(tys) = self.map.get(&op) {
             tys
         } else {
             return None;
         };
+
+        for ty in tys {
+            if ty.lhs == lhs && ty.rhs == rhs {
+                return Some(ty);
+            }
+        }
+
+        for ty in tys {
+            if ty.lhs == lhs && ty.rhs == rhs {
+                return Some(ty);
+            }
+        }
+
+        None
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BinaryOpTy {
     pub kind: BinaryOpKind,
-    pub lhs: MirTyDef,
-    pub rhs: MirTyDef,
-    pub return_ty: MirTyDef,
+    pub lhs: Ty,
+    pub rhs: Ty,
+    pub return_ty: Ty,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,7 +66,6 @@ pub fn deduce_expr(
 
     let ty = match &ctx.exprs[expr.0].kind {
         &InFnExprKind::Rng(lhs, rhs) => MirTy {
-            temporary: true,
             kind: MirTyKind::Range(
                 deduce_expr(global_ctx, ctx, scope, mir_ctx, expr_ty_cache, lhs),
                 deduce_expr(global_ctx, ctx, scope, mir_ctx, expr_ty_cache, rhs),
@@ -60,7 +73,6 @@ pub fn deduce_expr(
             ref_kind: None,
         },
         &InFnExprKind::RngInclusive(lhs, rhs) => MirTy {
-            temporary: true,
             kind: MirTyKind::RangeInclusive(
                 deduce_expr(global_ctx, ctx, scope, mir_ctx, expr_ty_cache, lhs),
                 deduce_expr(global_ctx, ctx, scope, mir_ctx, expr_ty_cache, rhs),
