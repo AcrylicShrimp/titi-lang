@@ -7,7 +7,7 @@ use std::num::NonZeroU32;
 
 #[derive(Debug)]
 pub struct TyInterner {
-    tys: Vec<MirTy>,
+    tys: Vec<*const MirTy>,
     reversed: FxHashMap<MirTy, TyIdx>,
 }
 
@@ -17,18 +17,26 @@ impl TyInterner {
             0,
             MirTy {
                 kind: MirTyKind::None,
-                ref_kind: None,
+                source_kind: None,
+                is_ref: false,
             },
         );
 
-        Self {
-            tys,
-            reversed: tys.into_iter().zip((1..).map(TyIdx::new)).collect(),
-        }
+        let reversed = tys
+            .into_iter()
+            .zip((1..).map(TyIdx::new))
+            .collect::<FxHashMap<_, _>>();
+        let tys = {
+            let mut tys = reversed.iter().collect::<Vec<_>>();
+            tys.sort_by_key(|(_, &idx)| idx);
+            tys.into_iter().map(|(ty, _)| ty as _).collect()
+        };
+
+        Self { reversed, tys }
     }
 
-    pub fn get_ty(&self, idx: TyIdx) -> &MirTy {
-        &self.tys[u32::from(idx) as usize]
+    pub fn get_ty(&self, idx: TyIdx) -> &'static MirTy {
+        unsafe { &*self.tys[u32::from(idx) as usize] }
     }
 
     pub fn intern(&mut self, ty: MirTy) -> TyIdx {
@@ -37,8 +45,9 @@ impl TyInterner {
         }
 
         let idx = TyIdx::new(self.tys.len() as _);
-        self.tys.push(ty);
-        self.reversed.insert(ty, idx);
+        self.reversed.insert(ty.clone(), idx);
+        self.tys
+            .push(self.reversed.get_key_value(&ty).unwrap().0 as _);
         idx
     }
 }
@@ -78,7 +87,7 @@ impl Ty {
         Self(TyIdx::new_const(index))
     }
 
-    pub fn as_ty(&self) -> &MirTy {
+    pub fn as_ty(&self) -> &'static MirTy {
         TY_INTERNER.lock().get_ty(self.0)
     }
 }
@@ -117,58 +126,64 @@ pub const TY_ISIZE: Ty = Ty::from_idx_const(7);
 pub const TY_USIZE: Ty = Ty::from_idx_const(8);
 pub const TY_F64: Ty = Ty::from_idx_const(9);
 pub const TY_STR: Ty = Ty::from_idx_const(10);
-pub const TY_CPTRSTR: Ty = Ty::from_idx_const(11);
-pub const TY_MPTRSTR: Ty = Ty::from_idx_const(12);
+pub const TY_PTRSTR: Ty = Ty::from_idx_const(11);
 
 lazy_static! {
     pub(crate) static ref TY_INTERNER: Mutex<TyInterner> = TyInterner::with_prefilled(vec![
         MirTy {
             kind: MirTyKind::None,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Bool,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Byte,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Char,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::I64,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::U64,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Isize,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Usize,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::F64,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
             kind: MirTyKind::Str,
-            ref_kind: None,
+            source_kind: None,
+            is_ref: false,
         },
         MirTy {
-            kind: MirTyKind::Cptr(TY_STR),
-            ref_kind: None,
-        },
-        MirTy {
-            kind: MirTyKind::Mptr(TY_STR),
-            ref_kind: None,
+            kind: MirTyKind::Ptr(TY_STR),
+            source_kind: None,
+            is_ref: false,
         }
     ])
     .into();

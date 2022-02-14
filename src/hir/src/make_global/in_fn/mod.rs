@@ -293,6 +293,7 @@ pub enum InFnExprKind {
     Member(InFnExprDef, SymbolWithSpan),
     SizeOf(TyRef),
     AddrOf(InFnExprDef),
+    TakeRef(InFnExprDef),
     Deref(InFnExprDef),
     Id(SymbolWithSpan),
     Literal(InFnLitDef),

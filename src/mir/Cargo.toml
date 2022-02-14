@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 ast = { path = "../ast" }
+bumpalo = "3"
 diagnostic = { path = "../diagnostic", features = ["global_instance"] }
 high_lexer = { path = "../high_lexer" }
 hir = { path = "../hir" }

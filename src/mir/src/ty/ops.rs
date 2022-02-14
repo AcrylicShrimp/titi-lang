@@ -1,11 +1,5 @@
-use crate::ty_interner::Ty;
+use crate::ty::Ty;
 use std::collections::HashMap;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExtendedTy {
-    pub ty: Ty,
-    pub addressable: bool,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinaryOpKind {
@@ -62,16 +56,10 @@ impl BinaryOpMap {
             return None;
         };
 
-        // Best fit
         for op in ops {
-            if op.lhs == lhs && op.rhs == rhs {
-                return Some(op);
-            }
-        }
-
-        // First fit
-        for op in ops {
-            if op.lhs == lhs && op.rhs.as_ty().kind == rhs.as_ty().kind {
+            if op.lhs.as_ty().is_assignable_from(lhs.as_ty())
+                && op.rhs.as_ty().is_assignable_from(rhs.as_ty())
+            {
                 return Some(op);
             }
         }

@@ -14,34 +14,6 @@ use crate::{
 //     let expr = &exprs[expr.0];
 
 //     match &expr.kind {
-//         &hir::GlobalExprKind::Assign(lhs, rhs) => {
-//             let lhs = transform_expr(mir_tys, mir_stmts, mir_exprs, exprs, lhs);
-//             let rhs = transform_expr(mir_tys, mir_stmts, mir_exprs, exprs, rhs);
-//             let expr_def = {
-//                 let def = mir_exprs.len();
-//                 mir_exprs.push(MirExpr {
-//                     kind: MirExprKind::Call(MirExprCall {
-//                         target_kind: MirExprCallTargetKind::Intrinsic(MirIntrinsic::Load),
-//                         params: vec![lhs, rhs],
-//                     }),
-//                     ty: {
-//                         let def = mir_tys.len();
-//                         mir_tys.push(MirTy {
-//                             kind: MirTyKind::None,
-//                             ref_kind: None,
-//                         });
-//                         MirTyDef(def)
-//                     },
-//                     span: expr.span,
-//                 });
-//                 MirExprDef(def)
-//             };
-//             let def = mir_stmts.len();
-//             mir_stmts.push(MirStmt {
-//                 kind: MirStmtKind::Expr(expr_def),
-//                 span: expr.span,
-//             });
-//         }
 //         hir::GlobalExprKind::AssignAdd(_, _) => todo!(),
 //         hir::GlobalExprKind::AssignSub(_, _) => todo!(),
 //         hir::GlobalExprKind::AssignMul(_, _) => todo!(),

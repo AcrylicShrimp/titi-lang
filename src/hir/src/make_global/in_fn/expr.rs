@@ -155,6 +155,9 @@ pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -
         ExprKind::AddrOf(lhs) => {
             make_in_fn_expr_impl! {InFnExprKind::AddrOf, lhs => ctx, scope, expr}
         }
+        ExprKind::TakeRef(lhs) => {
+            make_in_fn_expr_impl! {InFnExprKind::TakeRef, lhs => ctx, scope, expr}
+        }
         ExprKind::Deref(lhs) => {
             make_in_fn_expr_impl! {InFnExprKind::Deref, lhs => ctx, scope, expr}
         }

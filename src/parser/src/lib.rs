@@ -160,22 +160,16 @@ fn parse_top_level(
 }
 
 fn parse_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Ty, (String, Span)> {
-    let ref_kind = if parser.expect_keyword(CREF) {
-        Some(TyRefKind::Cref)
-    } else if parser.expect_keyword(MREF) {
-        Some(TyRefKind::Mref)
+    let is_ref = if parser.expect_keyword(REF) {
+        true
     } else {
-        None
+        false
     };
-    let span = if ref_kind.is_some() {
-        Some(parser.span())
-    } else {
-        None
-    };
+    let span = if is_ref { Some(parser.span()) } else { None };
     let sub_ty = parse_sub_ty(parser)?;
 
     Ok(Ty {
-        ref_kind,
+        is_ref,
         span: if let Some(span) = span {
             span.to(sub_ty.span)
         } else {
@@ -226,20 +220,12 @@ fn parse_sub_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<SubT
             kind: TyKind::Str,
             span: parser.span(),
         }
-    } else if parser.expect_keyword(CPTR) {
+    } else if parser.expect_keyword(PTR) {
         let span = parser.span();
 
         parser.expect_begin();
         SubTy {
-            kind: TyKind::Cptr(Box::new(parse_sub_ty(parser)?)),
-            span: span.to(parser.span()),
-        }
-    } else if parser.expect_keyword(MPTR) {
-        let span = parser.span();
-
-        parser.expect_begin();
-        SubTy {
-            kind: TyKind::Mptr(Box::new(parse_sub_ty(parser)?)),
+            kind: TyKind::Ptr(Box::new(parse_sub_ty(parser)?)),
             span: span.to(parser.span()),
         }
     } else if let Some(id) = parser.expect_id() {
@@ -1306,6 +1292,14 @@ fn parse_expr_unary(
         parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
             span: span.to(expr.span),
             kind: ExprKind::AddrOf(Box::new(expr)),
+        })
+    } else if parser.expect_keyword(REF) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        parse_expr_unary(parser, allow_object_literal).map(|expr| Expr {
+            span: span.to(expr.span),
+            kind: ExprKind::TakeRef(Box::new(expr)),
         })
     } else {
         parse_expr_single_and_member(parser, allow_object_literal)

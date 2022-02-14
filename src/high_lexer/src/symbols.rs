@@ -60,32 +60,30 @@ pub const ISIZE: Symbol = Symbol::from_idx_const(8);
 pub const USIZE: Symbol = Symbol::from_idx_const(9);
 pub const F64: Symbol = Symbol::from_idx_const(10);
 pub const STR: Symbol = Symbol::from_idx_const(11);
-pub const CPTR: Symbol = Symbol::from_idx_const(12);
-pub const MPTR: Symbol = Symbol::from_idx_const(13);
-pub const CREF: Symbol = Symbol::from_idx_const(14);
-pub const MREF: Symbol = Symbol::from_idx_const(15);
-pub const SIZEOF: Symbol = Symbol::from_idx_const(16);
-pub const ADDROF: Symbol = Symbol::from_idx_const(17);
-pub const AS: Symbol = Symbol::from_idx_const(18);
-pub const USE: Symbol = Symbol::from_idx_const(19);
-pub const EXTERN: Symbol = Symbol::from_idx_const(20);
-pub const PUB: Symbol = Symbol::from_idx_const(21);
-pub const FN: Symbol = Symbol::from_idx_const(22);
-pub const BREAK: Symbol = Symbol::from_idx_const(23);
-pub const CONTINUE: Symbol = Symbol::from_idx_const(24);
-pub const RETURN: Symbol = Symbol::from_idx_const(25);
-pub const IF: Symbol = Symbol::from_idx_const(26);
-pub const ELSE: Symbol = Symbol::from_idx_const(27);
-pub const FOR: Symbol = Symbol::from_idx_const(28);
-pub const IN: Symbol = Symbol::from_idx_const(29);
-pub const LET: Symbol = Symbol::from_idx_const(30);
-pub const STRUCT: Symbol = Symbol::from_idx_const(31);
+pub const PTR: Symbol = Symbol::from_idx_const(12);
+pub const REF: Symbol = Symbol::from_idx_const(13);
+pub const SIZEOF: Symbol = Symbol::from_idx_const(14);
+pub const ADDROF: Symbol = Symbol::from_idx_const(15);
+pub const AS: Symbol = Symbol::from_idx_const(16);
+pub const USE: Symbol = Symbol::from_idx_const(17);
+pub const EXTERN: Symbol = Symbol::from_idx_const(18);
+pub const PUB: Symbol = Symbol::from_idx_const(19);
+pub const FN: Symbol = Symbol::from_idx_const(20);
+pub const BREAK: Symbol = Symbol::from_idx_const(21);
+pub const CONTINUE: Symbol = Symbol::from_idx_const(22);
+pub const RETURN: Symbol = Symbol::from_idx_const(23);
+pub const IF: Symbol = Symbol::from_idx_const(24);
+pub const ELSE: Symbol = Symbol::from_idx_const(25);
+pub const FOR: Symbol = Symbol::from_idx_const(26);
+pub const IN: Symbol = Symbol::from_idx_const(27);
+pub const LET: Symbol = Symbol::from_idx_const(28);
+pub const STRUCT: Symbol = Symbol::from_idx_const(29);
 
 lazy_static! {
     pub(crate) static ref STR_INTERNER: Mutex<StrInterner> = StrInterner::with_prefilled(&[
-        "", "main", "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "cptr",
-        "mptr", "cref", "mref", "sizeof", "addrof", "as", "use", "extern", "pub", "fn", "break",
-        "continue", "return", "if", "else", "for", "in", "let", "struct"
+        "", "main", "bool", "byte", "char", "i64", "u64", "isize", "usize", "f64", "str", "ptr",
+        "ref", "sizeof", "addrof", "as", "use", "extern", "pub", "fn", "break", "continue",
+        "return", "if", "else", "for", "in", "let", "struct"
     ])
     .into();
 }
