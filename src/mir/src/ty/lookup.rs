@@ -1,24 +1,19 @@
-use crate::ty::{deduce_expr, Ty};
-use crate::{
-    MirContext, MirFunctionContext, MirFunctionDef, MirFunctionHeaderDef, MirLetDef, MirLetKind,
-    MirStructDef, MirTy, MirTyFn, MirTyKind,
-};
+use crate::ty::{BinaryOpTyMap, Ty};
+use crate::{MirTy, MirTyFn, MirTyKind};
 use ast::{ExternKind, SubTy, TopLevelItemPrefixKind, TyKind, TyUserDef, VisKind};
 use high_lexer::Symbol;
 use hir::{
-    GlobalContext, InFnContext, InFnExprDef, InFnScopeDef, InFnScopeKind, ModuleDef, ScopeRef,
-    TyRef,
+    FunctionDef, FunctionHeaderDef, GlobalContext, InFnContext, InFnLetDef, InFnScopeDef,
+    InFnScopeKind, ModuleDef, ScopeRef, StructDef, TyRef,
 };
-
-use super::BinaryOpTyMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Lookup {
     Primitive(Ty),
-    Struct(MirStructDef),
-    Fn(MirFunctionDef),
-    FnHeader(MirFunctionHeaderDef),
-    Local(MirLetDef),
+    Struct(StructDef),
+    Fn(FunctionDef),
+    FnHeader(FunctionHeaderDef),
+    Local(InFnLetDef),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -42,7 +37,7 @@ pub fn lookup_let(
     while let Some(def) = scope {
         match ctx.scopes[def.0].kind {
             InFnScopeKind::Let(def) if ctx.lets[def.0].name.symbol == id => {
-                return Ok(Lookup::Local(MirLetDef(def.0)));
+                return Ok(Lookup::Local(def));
             }
             _ => {
                 scope = ctx.scopes[def.0].parent;
@@ -65,7 +60,7 @@ pub fn lookup_local(
     while let Some(def) = scope {
         match ctx.scopes[def.0].kind {
             InFnScopeKind::Struct(def) if global_ctx.structs[def.0].name.symbol == id => {
-                return Ok(Lookup::Struct(MirStructDef(def.0)));
+                return Ok(Lookup::Struct(def));
             }
             InFnScopeKind::Fn(def) => {
                 if struct_only
@@ -74,7 +69,7 @@ pub fn lookup_local(
                         .symbol
                         == id
                 {
-                    return Ok(Lookup::Fn(MirFunctionDef(def.0)));
+                    return Ok(Lookup::Fn(def));
                 }
             }
             _ => {
@@ -115,7 +110,7 @@ pub fn lookup_module(
             }
         }
 
-        Ok(Lookup::Struct(MirStructDef(r#struct.def.0)))
+        Ok(Lookup::Struct(r#struct.def))
     } else if struct_only {
         if let Some(index) = global_ctx.modules[module.0]
             .fns
@@ -139,7 +134,7 @@ pub fn lookup_module(
                 }
             }
 
-            Ok(Lookup::Fn(MirFunctionDef(r#fn.def.0)))
+            Ok(Lookup::Fn(r#fn.def))
         } else if let Some(index) = global_ctx.modules[module.0]
             .fn_headers
             .iter()
@@ -149,7 +144,7 @@ pub fn lookup_module(
 
             // We can skip the visibility check here because the fn headers are always public currently.
 
-            Ok(Lookup::FnHeader(MirFunctionHeaderDef(r#fn_header.def.0)))
+            Ok(Lookup::FnHeader(r#fn_header.def))
         } else {
             Err(LookupError::NotFound)
         }
@@ -205,8 +200,6 @@ pub fn lookup_full(
 pub fn resolve_sub_ty(
     global_ctx: &GlobalContext,
     ctx: Option<&InFnContext>,
-    mir_ctx: &MirContext,
-    mir_function_ctx: &MirFunctionContext,
     binary_op_ty_map: &BinaryOpTyMap,
     scope: ScopeRef,
     ty: &SubTy,
@@ -280,8 +273,6 @@ pub fn resolve_sub_ty(
             let ty = resolve_sub_ty(
                 global_ctx,
                 ctx,
-                mir_ctx,
-                mir_function_ctx,
                 binary_op_ty_map,
                 scope,
                 inner_ty,
@@ -308,12 +299,12 @@ pub fn resolve_sub_ty(
                     }
                 },
                 Lookup::Fn(def) => {
-                    let header = &mir_ctx.fn_headers[mir_ctx.fns[def.0].header.0];
+                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
                     new_ty! {
                         MirTy {
                             kind: MirTyKind::Fn(MirTyFn {
-                                params: header.params.iter().map(|param| param.ty.clone()).collect(),
-                                return_ty: header.return_ty.clone(),
+                                params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
+                                return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
                             }),
                             source_kind: None,
                             is_ref: false,
@@ -321,12 +312,12 @@ pub fn resolve_sub_ty(
                     }
                 }
                 Lookup::FnHeader(def) => {
-                    let header = &mir_ctx.fn_headers[def.0];
+                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
                     new_ty! {
                         MirTy {
                             kind: MirTyKind::Fn(MirTyFn {
-                                params: header.params.iter().map(|param| param.ty.clone()).collect(),
-                                return_ty: header.return_ty.clone(),
+                                params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
+                                return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
                             }),
                             source_kind: None,
                             is_ref: false,
@@ -342,8 +333,6 @@ pub fn resolve_sub_ty(
 pub fn resolve_ty(
     global_ctx: &GlobalContext,
     ctx: Option<&InFnContext>,
-    mir_ctx: &MirContext,
-    mir_function_ctx: &MirFunctionContext,
     binary_op_ty_map: &BinaryOpTyMap,
     ty: &TyRef,
     struct_only: bool,
@@ -351,8 +340,6 @@ pub fn resolve_ty(
     let mir_ty = resolve_sub_ty(
         global_ctx,
         ctx,
-        mir_ctx,
-        mir_function_ctx,
         binary_op_ty_map,
         ty.scope,
         &ty.ty.sub_ty,

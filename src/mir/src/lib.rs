@@ -5,7 +5,7 @@ mod ty;
 pub use transform::*;
 
 use ast::{SymbolWithSpan, Vis};
-use hir::ModuleDef;
+use hir::{InnerStructDef, ModuleDef, StructDef};
 use span::Span;
 use ty::Ty;
 
@@ -336,8 +336,8 @@ pub enum MirTyKind {
     Ptr(Ty),
     Range(Ty, Ty),
     RangeInclusive(Ty, Ty),
-    Struct(MirStructDef),
-    InnerStruct(MirInnerStructDef),
+    Struct(StructDef),
+    InnerStruct(InnerStructDef),
     Fn(MirTyFn),
 }
 
