@@ -185,6 +185,11 @@ fn parse_sub_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<SubT
             kind: TyKind::Bool,
             span: parser.span(),
         }
+    } else if parser.expect_keyword(BYTE) {
+        SubTy {
+            kind: TyKind::Byte,
+            span: parser.span(),
+        }
     } else if parser.expect_keyword(CHAR) {
         SubTy {
             kind: TyKind::Char,

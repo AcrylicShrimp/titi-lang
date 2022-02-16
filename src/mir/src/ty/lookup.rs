@@ -101,13 +101,13 @@ pub fn lookup_module_id(
     } else if let Some(index) = global_ctx.modules[module.0]
         .fn_headers
         .iter()
-        .position(|ty| ty.name.symbol == id)
+        .position(|header| header.name.symbol == id)
     {
         let fn_header = &global_ctx.modules[module.0].fn_headers[index];
 
         // We can skip the visibility check here because the fn headers are always public currently.
 
-        Ok(Lookup::FnHeader(r#fn_header.def))
+        Ok(Lookup::FnHeader(fn_header.def))
     } else {
         Err(LookupError::NotFound)
     }

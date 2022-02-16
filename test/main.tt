@@ -3,6 +3,7 @@ use next;
 
 extern fn print(format ptr str);
 extern fn println(format ptr str);
+extern fn exit(code byte);
 
 struct A {}
 
@@ -15,6 +16,7 @@ fn main1() {
 
 	};
 	println("Hello, world!");
+	exit(-1byte);
 }
 
 fn main2() {
@@ -23,7 +25,11 @@ fn main2() {
 	next::println("Hello, world!");
 }
 
-fn callback(cb fn(ptr str, ref usize) next::Foo) {
+fn callback(cb fn(ptr str, ref usize, byte) next::Foo) {
 	let a usize;
 	cb("", ref a);
+
+	if a == 10usize {
+		exit(-1byte);
+	}
 }
