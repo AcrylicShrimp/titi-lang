@@ -19,7 +19,9 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "./test/main.tt"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
