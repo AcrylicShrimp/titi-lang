@@ -101,6 +101,7 @@ pub enum TyKind {
     F64,
     Str,
     Ptr(Box<SubTy>),
+    Fn(Box<FnHeaderWithoutName>),
     UserDef(TyUserDef),
 }
 
@@ -162,6 +163,13 @@ pub struct Fn {
 pub struct FnHeader {
     pub name: SymbolWithSpan,
     pub params: Vec<FnParam>,
+    pub return_ty: Option<Ty>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct FnHeaderWithoutName {
+    pub params: Vec<Ty>,
     pub return_ty: Option<Ty>,
     pub span: Span,
 }

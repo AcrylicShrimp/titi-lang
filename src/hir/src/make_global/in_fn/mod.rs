@@ -6,7 +6,7 @@ pub use expr::*;
 pub use object::*;
 pub use stmt::*;
 
-use crate::{FunctionDef, ModuleDef, StructDef, TyRef, TyRefUserDef};
+use crate::{FunctionDef, FunctionHeaderDef, ModuleDef, StructDef, TyRef, TyRefUserDef};
 use ast::{Literal, SymbolWithSpan};
 use span::Span;
 
@@ -40,6 +40,7 @@ pub struct InFnLitDef(pub usize);
 #[derive(Debug)]
 pub struct InFnContext {
     pub module: ModuleDef,
+    pub header: FunctionHeaderDef,
     pub scopes: Vec<InFnScope>,
     pub blocks: Vec<InFnBlock>,
     pub lets: Vec<InFnLet>,
@@ -52,9 +53,10 @@ pub struct InFnContext {
 }
 
 impl InFnContext {
-    pub fn new(module: ModuleDef) -> Self {
+    pub fn new(module: ModuleDef, header: FunctionHeaderDef) -> Self {
         Self {
             module,
+            header,
             scopes: Vec::new(),
             blocks: Vec::new(),
             lets: Vec::new(),

@@ -8,7 +8,8 @@ pub fn make_global_fn(
     scope: ScopeRef,
     function: Fn,
 ) -> FunctionDef {
-    let mut ctx = InFnContext::new(scope.module);
+    let header = make_global_fn_header(global_ctx, scope, function.header);
+    let mut ctx = InFnContext::new(scope.module, header);
     let root_scope = ctx.push_scope(InFnScope {
         module: scope.module,
         parent: None,
@@ -16,7 +17,7 @@ pub fn make_global_fn(
     });
     let block = make_in_fn_block(global_ctx, &mut ctx, root_scope, function.body);
     let global_fn = GlobalFn {
-        header: make_global_fn_header(global_ctx, scope, function.header),
+        header,
         ctx,
         scope: root_scope,
         body: block,

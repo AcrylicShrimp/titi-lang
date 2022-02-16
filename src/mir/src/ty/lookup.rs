@@ -13,6 +13,7 @@ pub enum Lookup {
     Struct(StructDef),
     Fn(FunctionDef),
     FnHeader(FunctionHeaderDef),
+    FnHeaderParam(FunctionHeaderDef, usize),
     Local(InFnLetDef),
 }
 
@@ -52,6 +53,17 @@ pub fn lookup_local_id(
                 scope = ctx.scopes[def.0].parent;
             }
         }
+    }
+
+    let header = &global_ctx.fn_headers[ctx.header.0];
+
+    if let Some(param) = header
+        .params
+        .iter()
+        .enumerate()
+        .find(|&(_, param)| param.name.symbol == id)
+    {
+        return Ok(Lookup::FnHeaderParam(ctx.header, param.0));
     }
 
     Err(LookupError::NotFound)
@@ -440,6 +452,24 @@ pub fn resolve_sub_ty(
             new_ty! {
                 MirTy {
                     kind: MirTyKind::Ptr(ty),
+                    source_kind: None,
+                    is_ref: false,
+                }
+            }
+        }
+        TyKind::Fn(header) => {
+            new_ty! {
+                MirTy {
+                    kind: MirTyKind::Fn(MirTyFn {
+                        params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &TyRef {
+                            scope,
+                            ty: param.clone()
+                        }).unwrap()).collect(),
+                        return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &TyRef {
+                            scope,
+                            ty: ty.clone()
+                        }).unwrap()),
+                    }),
                     source_kind: None,
                     is_ref: false,
                 }

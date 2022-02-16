@@ -228,6 +228,16 @@ fn parse_sub_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<SubT
             kind: TyKind::Ptr(Box::new(parse_sub_ty(parser)?)),
             span: span.to(parser.span()),
         }
+    } else if parser.expect_keyword(FN) {
+        let span = parser.span();
+
+        parser.expect_begin();
+        let header = parse_fn_header_without_name(parser)?;
+
+        SubTy {
+            kind: TyKind::Fn(Box::new(header)),
+            span: span.to(parser.span()),
+        }
     } else if let Some(id) = parser.expect_id() {
         let id = SymbolWithSpan {
             symbol: id,
@@ -523,6 +533,46 @@ fn parse_fn_header(
 
     Ok(FnHeader {
         name,
+        params,
+        return_ty,
+        span: span.to(parser.span()),
+    })
+}
+
+fn parse_fn_header_without_name(
+    parser: &mut Parser<impl Iterator<Item = Token>>,
+) -> Result<FnHeaderWithoutName, (String, Span)> {
+    let span = parser.span();
+
+    parser.expect_begin();
+    if !parser.expect_kind(TokenKind::OpenParen) {
+        return Err(parser.expect_else());
+    }
+
+    let mut params = vec![];
+
+    while !parser.expect_kind(TokenKind::CloseParen) {
+        if !parser.exists() {
+            return Err(parser.expect_else());
+        }
+
+        parser.expect_begin();
+        let ty = parse_ty(parser)?;
+
+        params.push(ty);
+
+        parser.expect_begin();
+        parser.expect_kind(TokenKind::Comma);
+    }
+
+    let mut return_ty = None;
+
+    if parser.cursor().id().is_some() {
+        parser.expect_begin();
+        return_ty = Some(parse_ty(parser)?);
+    }
+
+    Ok(FnHeaderWithoutName {
         params,
         return_ty,
         span: span.to(parser.span()),

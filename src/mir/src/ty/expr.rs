@@ -464,6 +464,16 @@ pub fn deduce_expr(
                         is_ref: false,
                     }
                 }
+                Lookup::FnHeaderParam(def, index) => {
+                    let header = &global_ctx.fn_headers[def.0];
+                    return resolve_ty(
+                        global_ctx,
+                        Some(ctx),
+                        binary_op_ty_map,
+                        &header.params[index].ty,
+                    )
+                    .unwrap();
+                }
                 Lookup::Local(def) => {
                     return match &ctx.lets[def.0].kind {
                         InFnLetKind::Ty(ty) => {

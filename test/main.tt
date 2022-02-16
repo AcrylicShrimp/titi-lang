@@ -22,3 +22,8 @@ fn main2() {
 	println("Hello, world!");
 	next::println("Hello, world!");
 }
+
+fn callback(cb fn(ptr str, ref usize) next::Foo) {
+	let a usize;
+	cb("", ref a);
+}
