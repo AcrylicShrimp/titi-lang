@@ -1,7 +1,10 @@
+use crate::ty::{resolve_ty, Lookup, Ty};
 use crate::{
-    ty::{lookup_full, lookup_let, resolve_ty, Lookup, Ty},
-    MirTy, MirTyKind, MirTySourceKind,
+    lookup_full_id_ty, lookup_full_ty, lookup_local_id, lookup_module_id, MirTy, MirTyFn,
+    MirTyKind, MirTySourceKind,
 };
+use ast::TyUserDef;
+use high_lexer::TokenLiteralKind;
 use hir::{
     GlobalContext, GlobalStructFieldKind, InFnContext, InFnExprDef, InFnExprKind, InFnLetKind,
     InFnScopeDef, ScopeRef,
@@ -223,10 +226,10 @@ pub fn deduce_expr(
             is_ref: false,
         },
         InFnExprKind::Cast(_, rhs) => {
-            return resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, rhs, false).unwrap();
+            return resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, rhs).unwrap();
         }
         InFnExprKind::Object(lhs) => {
-            match lookup_full(
+            match lookup_full_ty(
                 global_ctx,
                 Some(ctx),
                 ScopeRef {
@@ -234,11 +237,14 @@ pub fn deduce_expr(
                     scope: Some(scope),
                 },
                 &lhs.ty.ty,
-                true,
             )
             .unwrap()
             {
-                Lookup::Struct(_) => todo!(),
+                Lookup::Struct(def) => MirTy {
+                    kind: MirTyKind::Struct(def),
+                    source_kind: None,
+                    is_ref: false,
+                },
                 _ => panic!("no struct found"),
             }
         }
@@ -267,14 +273,8 @@ pub fn deduce_expr(
                     if let Some(position) = fields.iter().position(|field| field.name == rhs) {
                         match &fields[position].kind {
                             GlobalStructFieldKind::Plain(ty) => {
-                                return resolve_ty(
-                                    global_ctx,
-                                    Some(ctx),
-                                    binary_op_ty_map,
-                                    ty,
-                                    false,
-                                )
-                                .unwrap();
+                                return resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty)
+                                    .unwrap();
                             }
                             &GlobalStructFieldKind::Struct(def) => MirTy {
                                 kind: MirTyKind::InnerStruct(def),
@@ -295,14 +295,8 @@ pub fn deduce_expr(
                     if let Some(position) = fields.iter().position(|field| field.name == rhs) {
                         match &fields[position].kind {
                             GlobalStructFieldKind::Plain(ty) => {
-                                return resolve_ty(
-                                    global_ctx,
-                                    Some(ctx),
-                                    binary_op_ty_map,
-                                    ty,
-                                    false,
-                                )
-                                .unwrap();
+                                return resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty)
+                                    .unwrap();
                             }
                             &GlobalStructFieldKind::Struct(def) => MirTy {
                                 kind: MirTyKind::InnerStruct(def),
@@ -323,6 +317,70 @@ pub fn deduce_expr(
                     source_kind: None,
                     is_ref: false,
                 },
+            }
+        }
+        &InFnExprKind::ModuleMember(lhs, rhs) => {
+            match lookup_full_id_ty(
+                global_ctx,
+                Some(ctx),
+                ScopeRef {
+                    module: ctx.module,
+                    scope: Some(scope),
+                },
+                &TyUserDef {
+                    module: Some(lhs),
+                    id: rhs,
+                    span: lhs.span.to(rhs.span),
+                },
+            )
+            .unwrap()
+            {
+                Lookup::Struct(def) => MirTy {
+                    kind: MirTyKind::Struct(def),
+                    source_kind: None,
+                    is_ref: false,
+                },
+                Lookup::Fn(def) => {
+                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
+                    MirTy {
+                        kind: MirTyKind::Fn(MirTyFn {
+                            params: header
+                                .params
+                                .iter()
+                                .map(|param| {
+                                    resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &param.ty)
+                                        .unwrap()
+                                })
+                                .collect(),
+                            return_ty: header.return_ty.as_ref().map(|ty| {
+                                resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &ty).unwrap()
+                            }),
+                        }),
+                        source_kind: None,
+                        is_ref: false,
+                    }
+                }
+                Lookup::FnHeader(def) => {
+                    let header = &global_ctx.fn_headers[def.0];
+                    MirTy {
+                        kind: MirTyKind::Fn(MirTyFn {
+                            params: header
+                                .params
+                                .iter()
+                                .map(|param| {
+                                    resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &param.ty)
+                                        .unwrap()
+                                })
+                                .collect(),
+                            return_ty: header.return_ty.as_ref().map(|ty| {
+                                resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &ty).unwrap()
+                            }),
+                        }),
+                        source_kind: None,
+                        is_ref: false,
+                    }
+                }
+                _ => panic!("not struct or function or function header found"),
             }
         }
         InFnExprKind::SizeOf(_) => MirTy {
@@ -363,22 +421,179 @@ pub fn deduce_expr(
             }
         }
         InFnExprKind::Id(id) => {
-            return match lookup_let(global_ctx, ctx, scope, id.symbol).unwrap() {
-                Lookup::Local(def) => match &ctx.lets[def.0].kind {
-                    InFnLetKind::Ty(ty) => {
-                        resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty, false).unwrap()
+            match lookup_local_id(global_ctx, ctx, scope, id.symbol).unwrap_or_else(|_| {
+                lookup_module_id(global_ctx, ctx.module, id.symbol, true).unwrap()
+            }) {
+                Lookup::Fn(def) => {
+                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
+                    MirTy {
+                        kind: MirTyKind::Fn(MirTyFn {
+                            params: header
+                                .params
+                                .iter()
+                                .map(|param| {
+                                    resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &param.ty)
+                                        .unwrap()
+                                })
+                                .collect(),
+                            return_ty: header.return_ty.as_ref().map(|ty| {
+                                resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &ty).unwrap()
+                            }),
+                        }),
+                        source_kind: None,
+                        is_ref: false,
                     }
-                    &InFnLetKind::Expr(def) => {
-                        deduce_expr(global_ctx, ctx, scope, binary_op_ty_map, def)
+                }
+                Lookup::FnHeader(def) => {
+                    let header = &global_ctx.fn_headers[def.0];
+                    MirTy {
+                        kind: MirTyKind::Fn(MirTyFn {
+                            params: header
+                                .params
+                                .iter()
+                                .map(|param| {
+                                    resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &param.ty)
+                                        .unwrap()
+                                })
+                                .collect(),
+                            return_ty: header.return_ty.as_ref().map(|ty| {
+                                resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, &ty).unwrap()
+                            }),
+                        }),
+                        source_kind: None,
+                        is_ref: false,
                     }
-                    InFnLetKind::TyExpr(ty, _) => {
-                        resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty, false).unwrap()
+                }
+                Lookup::Local(def) => {
+                    return match &ctx.lets[def.0].kind {
+                        InFnLetKind::Ty(ty) => {
+                            resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty).unwrap()
+                        }
+                        &InFnLetKind::Expr(def) => {
+                            deduce_expr(global_ctx, ctx, scope, binary_op_ty_map, def)
+                        }
+                        InFnLetKind::TyExpr(ty, _) => {
+                            resolve_ty(global_ctx, Some(ctx), binary_op_ty_map, ty).unwrap()
+                        }
                     }
-                },
+                }
                 _ => unreachable!(),
             }
         }
-        InFnExprKind::Literal(_) => todo!(),
+        InFnExprKind::Literal(def) => {
+            let lit = &ctx.lits[def.0].lit;
+
+            match lit.kind() {
+                TokenLiteralKind::Bool => MirTy {
+                    kind: MirTyKind::Bool,
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::IntegerBinary => MirTy {
+                    kind: if let Some(suffix) = lit.suffix() {
+                        match suffix.as_str() {
+                            "byte" => MirTyKind::Byte,
+                            "char" => MirTyKind::Char,
+                            "i64" => MirTyKind::I64,
+                            "u64" => MirTyKind::U64,
+                            "isize" => MirTyKind::Isize,
+                            "usize" => MirTyKind::Usize,
+                            _ => panic!("unexpected integer literal suffix: {}", suffix),
+                        }
+                    } else {
+                        panic!("unknown type");
+                    },
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::IntegerOctal => MirTy {
+                    kind: if let Some(suffix) = lit.suffix() {
+                        match suffix.as_str() {
+                            "byte" => MirTyKind::Byte,
+                            "char" => MirTyKind::Char,
+                            "i64" => MirTyKind::I64,
+                            "u64" => MirTyKind::U64,
+                            "isize" => MirTyKind::Isize,
+                            "usize" => MirTyKind::Usize,
+                            _ => panic!("unexpected integer literal suffix: {}", suffix),
+                        }
+                    } else {
+                        panic!("unknown type");
+                    },
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::IntegerHexadecimal => MirTy {
+                    kind: if let Some(suffix) = lit.suffix() {
+                        match suffix.as_str() {
+                            "byte" => MirTyKind::Byte,
+                            "char" => MirTyKind::Char,
+                            "i64" => MirTyKind::I64,
+                            "u64" => MirTyKind::U64,
+                            "isize" => MirTyKind::Isize,
+                            "usize" => MirTyKind::Usize,
+                            _ => panic!("unexpected integer literal suffix: {}", suffix),
+                        }
+                    } else {
+                        panic!("unknown type");
+                    },
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::IntegerDecimal => MirTy {
+                    kind: if let Some(suffix) = lit.suffix() {
+                        match suffix.as_str() {
+                            "byte" => MirTyKind::Byte,
+                            "char" => MirTyKind::Char,
+                            "i64" => MirTyKind::I64,
+                            "u64" => MirTyKind::U64,
+                            "isize" => MirTyKind::Isize,
+                            "usize" => MirTyKind::Usize,
+                            "f64" => MirTyKind::F64,
+                            _ => panic!("unexpected integer literal suffix: {}", suffix),
+                        }
+                    } else {
+                        panic!("unknown type");
+                    },
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::Float => MirTy {
+                    kind: if let Some(suffix) = lit.suffix() {
+                        match suffix.as_str() {
+                            "f64" => MirTyKind::F64,
+                            _ => panic!("unexpected float literal suffix: {}", suffix),
+                        }
+                    } else {
+                        MirTyKind::F64
+                    },
+                    source_kind: None,
+                    is_ref: false,
+                },
+                TokenLiteralKind::SingleQuotedStr => {
+                    if lit.suffix().is_some() {
+                        panic!("unexpected character literal suffix");
+                    }
+
+                    MirTy {
+                        kind: MirTyKind::Char,
+                        source_kind: None,
+                        is_ref: false,
+                    }
+                }
+                TokenLiteralKind::DoubleQuotedStr => {
+                    if lit.suffix().is_some() {
+                        panic!("unexpected string literal suffix");
+                    }
+
+                    MirTy {
+                        kind: MirTyKind::Str,
+                        source_kind: None,
+                        is_ref: false,
+                    }
+                }
+            }
+        }
     };
 
     new_ty! { ty }

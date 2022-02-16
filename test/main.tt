@@ -1,23 +1,24 @@
 
 use next;
 
-extern fn print(format cptr str);
-extern fn println(format cptr str);
+extern fn print(format ptr str);
+extern fn println(format ptr str);
 
 struct A {}
 
-fn main() {
+fn main1() {
 	let a A = A {};
-	a.bcd;
-	a.b.c.fdsa;
-	print(a.b);
-	let foo next.Foo = next.Foo {
+	# a.bcd;
+	# a.b.c.fdsa;
+	# print(a.b);
+	let foo next::Foo = next::Foo {
 
 	};
 	println("Hello, world!");
 }
 
-fn main() {
-	main();
+fn main2() {
+	main2();
 	println("Hello, world!");
+	next::println("Hello, world!");
 }

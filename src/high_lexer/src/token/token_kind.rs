@@ -52,6 +52,8 @@ pub enum TokenKind {
     // Unary operators
     BitNot, // "~"
     LogNot, // "!"
+    // Module access operators
+    ModuleMember, // "::"
     Id(Symbol),
     Literal(TokenLiteral),
 }
@@ -109,6 +111,7 @@ impl TokenKind {
             Self::LogAnd => "'&&'",
             Self::BitNot => "'~'",
             Self::LogNot => "'!'",
+            Self::ModuleMember => "'::'",
             Self::Id(..) => "identifier",
             Self::Literal(..) => "literal",
         }

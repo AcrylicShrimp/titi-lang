@@ -26,7 +26,7 @@ pub enum LookupError {
 pub type LookupResult = Result<Lookup, LookupError>;
 pub type ResolveResult = Result<Ty, LookupError>;
 
-pub fn lookup_let(
+pub fn lookup_local_id(
     global_ctx: &GlobalContext,
     ctx: &InFnContext,
     scope: InFnScopeDef,
@@ -36,6 +36,15 @@ pub fn lookup_let(
 
     while let Some(def) = scope {
         match ctx.scopes[def.0].kind {
+            InFnScopeKind::Fn(def) => {
+                if global_ctx.fn_headers[global_ctx.fns[def.0].header.0]
+                    .name
+                    .symbol
+                    == id
+                {
+                    return Ok(Lookup::Fn(def));
+                }
+            }
             InFnScopeKind::Let(def) if ctx.lets[def.0].name.symbol == id => {
                 return Ok(Lookup::Local(def));
             }
@@ -48,12 +57,91 @@ pub fn lookup_let(
     Err(LookupError::NotFound)
 }
 
-pub fn lookup_local(
+pub fn lookup_module_id(
+    global_ctx: &GlobalContext,
+    module: ModuleDef,
+    id: Symbol,
+    is_local: bool,
+) -> LookupResult {
+    if let Some(index) = global_ctx.modules[module.0]
+        .fns
+        .iter()
+        .position(|r#fn| r#fn.name.symbol == id)
+    {
+        let r#fn = &global_ctx.modules[module.0].fns[index];
+
+        if !is_local {
+            if let Some(prefix) = &r#fn.prefix {
+                match prefix.kind {
+                    TopLevelItemPrefixKind::Extern(r#extern) => match r#extern.kind {
+                        ExternKind::Extern => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
+                    TopLevelItemPrefixKind::Vis(vis) => match vis.kind {
+                        VisKind::Pub => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
+                }
+            }
+        }
+
+        Ok(Lookup::Fn(r#fn.def))
+    } else if let Some(index) = global_ctx.modules[module.0]
+        .fn_headers
+        .iter()
+        .position(|ty| ty.name.symbol == id)
+    {
+        let fn_header = &global_ctx.modules[module.0].fn_headers[index];
+
+        // We can skip the visibility check here because the fn headers are always public currently.
+
+        Ok(Lookup::FnHeader(r#fn_header.def))
+    } else {
+        Err(LookupError::NotFound)
+    }
+}
+
+pub fn lookup_full_id(
+    global_ctx: &GlobalContext,
+    ctx: Option<&InFnContext>,
+    scope: ScopeRef,
+    user_def: &TyUserDef,
+) -> LookupResult {
+    if let Some(external_module) = user_def.module {
+        return if let Some(use_index) = global_ctx.modules[scope.module.0]
+            .uses
+            .iter()
+            .position(|r#use| r#use.name.symbol == external_module.symbol)
+        {
+            lookup_module_id(
+                global_ctx,
+                global_ctx.modules[scope.module.0].uses[use_index].def,
+                user_def.id.symbol,
+                false,
+            )
+        } else {
+            Err(LookupError::NoModuleInUse)
+        };
+    }
+
+    if let Some(scope_def) = scope.scope {
+        if let Some(ctx) = ctx {
+            let local = lookup_local_id(global_ctx, ctx, scope_def, user_def.id.symbol);
+
+            if local.is_ok() {
+                return local;
+            }
+        }
+    }
+
+    lookup_module_id(global_ctx, scope.module, user_def.id.symbol, true)
+}
+
+pub fn lookup_local_id_ty(
     global_ctx: &GlobalContext,
     ctx: &InFnContext,
     scope: InFnScopeDef,
     id: Symbol,
-    struct_only: bool,
 ) -> LookupResult {
     let mut scope = Some(scope);
 
@@ -63,11 +151,10 @@ pub fn lookup_local(
                 return Ok(Lookup::Struct(def));
             }
             InFnScopeKind::Fn(def) => {
-                if struct_only
-                    && global_ctx.fn_headers[global_ctx.fns[def.0].header.0]
-                        .name
-                        .symbol
-                        == id
+                if global_ctx.fn_headers[global_ctx.fns[def.0].header.0]
+                    .name
+                    .symbol
+                    == id
                 {
                     return Ok(Lookup::Fn(def));
                 }
@@ -81,12 +168,11 @@ pub fn lookup_local(
     Err(LookupError::NotFound)
 }
 
-pub fn lookup_module(
+pub fn lookup_module_id_ty(
     global_ctx: &GlobalContext,
     module: ModuleDef,
     id: Symbol,
     is_local: bool,
-    struct_only: bool,
 ) -> LookupResult {
     if let Some(index) = global_ctx.modules[module.0]
         .structs
@@ -111,54 +197,49 @@ pub fn lookup_module(
         }
 
         Ok(Lookup::Struct(r#struct.def))
-    } else if struct_only {
-        if let Some(index) = global_ctx.modules[module.0]
-            .fns
-            .iter()
-            .position(|r#fn| r#fn.name.symbol == id)
-        {
-            let r#fn = &global_ctx.modules[module.0].fns[index];
+    } else if let Some(index) = global_ctx.modules[module.0]
+        .fns
+        .iter()
+        .position(|r#fn| r#fn.name.symbol == id)
+    {
+        let r#fn = &global_ctx.modules[module.0].fns[index];
 
-            if !is_local {
-                if let Some(prefix) = &r#fn.prefix {
-                    match prefix.kind {
-                        TopLevelItemPrefixKind::Extern(r#extern) => match r#extern.kind {
-                            ExternKind::Extern => {}
-                            _ => return Err(LookupError::NotPub),
-                        },
-                        TopLevelItemPrefixKind::Vis(vis) => match vis.kind {
-                            VisKind::Pub => {}
-                            _ => return Err(LookupError::NotPub),
-                        },
-                    }
+        if !is_local {
+            if let Some(prefix) = &r#fn.prefix {
+                match prefix.kind {
+                    TopLevelItemPrefixKind::Extern(r#extern) => match r#extern.kind {
+                        ExternKind::Extern => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
+                    TopLevelItemPrefixKind::Vis(vis) => match vis.kind {
+                        VisKind::Pub => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
                 }
             }
-
-            Ok(Lookup::Fn(r#fn.def))
-        } else if let Some(index) = global_ctx.modules[module.0]
-            .fn_headers
-            .iter()
-            .position(|ty| ty.name.symbol == id)
-        {
-            let fn_header = &global_ctx.modules[module.0].fn_headers[index];
-
-            // We can skip the visibility check here because the fn headers are always public currently.
-
-            Ok(Lookup::FnHeader(r#fn_header.def))
-        } else {
-            Err(LookupError::NotFound)
         }
+
+        Ok(Lookup::Fn(r#fn.def))
+    } else if let Some(index) = global_ctx.modules[module.0]
+        .fn_headers
+        .iter()
+        .position(|ty| ty.name.symbol == id)
+    {
+        let fn_header = &global_ctx.modules[module.0].fn_headers[index];
+
+        // We can skip the visibility check here because the fn headers are always public currently.
+
+        Ok(Lookup::FnHeader(r#fn_header.def))
     } else {
         Err(LookupError::NotFound)
     }
 }
 
-pub fn lookup_full(
+pub fn lookup_full_id_ty(
     global_ctx: &GlobalContext,
     ctx: Option<&InFnContext>,
     scope: ScopeRef,
     user_def: &TyUserDef,
-    struct_only: bool,
 ) -> LookupResult {
     if let Some(external_module) = user_def.module {
         return if let Some(use_index) = global_ctx.modules[scope.module.0]
@@ -166,12 +247,11 @@ pub fn lookup_full(
             .iter()
             .position(|r#use| r#use.name.symbol == external_module.symbol)
         {
-            lookup_module(
+            lookup_module_id_ty(
                 global_ctx,
                 global_ctx.modules[scope.module.0].uses[use_index].def,
                 user_def.id.symbol,
                 false,
-                struct_only,
             )
         } else {
             Err(LookupError::NoModuleInUse)
@@ -180,7 +260,7 @@ pub fn lookup_full(
 
     if let Some(scope_def) = scope.scope {
         if let Some(ctx) = ctx {
-            let local = lookup_local(global_ctx, ctx, scope_def, user_def.id.symbol, struct_only);
+            let local = lookup_local_id_ty(global_ctx, ctx, scope_def, user_def.id.symbol);
 
             if local.is_ok() {
                 return local;
@@ -188,13 +268,99 @@ pub fn lookup_full(
         }
     }
 
-    lookup_module(
-        global_ctx,
-        scope.module,
-        user_def.id.symbol,
-        true,
-        struct_only,
-    )
+    lookup_module_id_ty(global_ctx, scope.module, user_def.id.symbol, true)
+}
+
+pub fn lookup_local_ty(
+    global_ctx: &GlobalContext,
+    ctx: &InFnContext,
+    scope: InFnScopeDef,
+    id: Symbol,
+) -> LookupResult {
+    let mut scope = Some(scope);
+
+    while let Some(def) = scope {
+        match ctx.scopes[def.0].kind {
+            InFnScopeKind::Struct(def) if global_ctx.structs[def.0].name.symbol == id => {
+                return Ok(Lookup::Struct(def));
+            }
+            _ => {
+                scope = ctx.scopes[def.0].parent;
+            }
+        }
+    }
+
+    Err(LookupError::NotFound)
+}
+
+pub fn lookup_module_ty(
+    global_ctx: &GlobalContext,
+    module: ModuleDef,
+    id: Symbol,
+    is_local: bool,
+) -> LookupResult {
+    if let Some(index) = global_ctx.modules[module.0]
+        .structs
+        .iter()
+        .position(|r#struct| r#struct.name.symbol == id)
+    {
+        let r#struct = &global_ctx.modules[module.0].structs[index];
+
+        if !is_local {
+            if let Some(prefix) = &r#struct.prefix {
+                match prefix.kind {
+                    TopLevelItemPrefixKind::Extern(r#extern) => match r#extern.kind {
+                        ExternKind::Extern => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
+                    TopLevelItemPrefixKind::Vis(vis) => match vis.kind {
+                        VisKind::Pub => {}
+                        _ => return Err(LookupError::NotPub),
+                    },
+                }
+            }
+        }
+
+        Ok(Lookup::Struct(r#struct.def))
+    } else {
+        Err(LookupError::NotFound)
+    }
+}
+
+pub fn lookup_full_ty(
+    global_ctx: &GlobalContext,
+    ctx: Option<&InFnContext>,
+    scope: ScopeRef,
+    user_def: &TyUserDef,
+) -> LookupResult {
+    if let Some(external_module) = user_def.module {
+        return if let Some(use_index) = global_ctx.modules[scope.module.0]
+            .uses
+            .iter()
+            .position(|r#use| r#use.name.symbol == external_module.symbol)
+        {
+            lookup_module_ty(
+                global_ctx,
+                global_ctx.modules[scope.module.0].uses[use_index].def,
+                user_def.id.symbol,
+                false,
+            )
+        } else {
+            Err(LookupError::NoModuleInUse)
+        };
+    }
+
+    if let Some(scope_def) = scope.scope {
+        if let Some(ctx) = ctx {
+            let local = lookup_local_ty(global_ctx, ctx, scope_def, user_def.id.symbol);
+
+            if local.is_ok() {
+                return local;
+            }
+        }
+    }
+
+    lookup_module_ty(global_ctx, scope.module, user_def.id.symbol, true)
 }
 
 pub fn resolve_sub_ty(
@@ -203,7 +369,6 @@ pub fn resolve_sub_ty(
     binary_op_ty_map: &BinaryOpTyMap,
     scope: ScopeRef,
     ty: &SubTy,
-    struct_only: bool,
 ) -> ResolveResult {
     Ok(match &ty.kind {
         TyKind::Bool => new_ty! {
@@ -270,14 +435,8 @@ pub fn resolve_sub_ty(
             }
         },
         TyKind::Ptr(inner_ty) => {
-            let ty = resolve_sub_ty(
-                global_ctx,
-                ctx,
-                binary_op_ty_map,
-                scope,
-                inner_ty,
-                struct_only,
-            )?;
+            let ty = resolve_sub_ty(global_ctx, ctx, binary_op_ty_map, scope, inner_ty)?;
+
             new_ty! {
                 MirTy {
                     kind: MirTyKind::Ptr(ty),
@@ -287,7 +446,7 @@ pub fn resolve_sub_ty(
             }
         }
         TyKind::UserDef(user_def) => {
-            let lookup = lookup_full(global_ctx, ctx, scope, user_def, struct_only)?;
+            let lookup = lookup_full_ty(global_ctx, ctx, scope, user_def)?;
 
             match lookup {
                 Lookup::Primitive(ty) => ty,
@@ -298,33 +457,33 @@ pub fn resolve_sub_ty(
                         is_ref: false,
                     }
                 },
-                Lookup::Fn(def) => {
-                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
-                    new_ty! {
-                        MirTy {
-                            kind: MirTyKind::Fn(MirTyFn {
-                                params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
-                                return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
-                            }),
-                            source_kind: None,
-                            is_ref: false,
-                        }
-                    }
-                }
-                Lookup::FnHeader(def) => {
-                    let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
-                    new_ty! {
-                        MirTy {
-                            kind: MirTyKind::Fn(MirTyFn {
-                                params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
-                                return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
-                            }),
-                            source_kind: None,
-                            is_ref: false,
-                        }
-                    }
-                }
-                Lookup::Local(_) => unreachable!(),
+                // Lookup::Fn(def) => {
+                //     let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
+                //     new_ty! {
+                //         MirTy {
+                //             kind: MirTyKind::Fn(MirTyFn {
+                //                 params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
+                //                 return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
+                //             }),
+                //             source_kind: None,
+                //             is_ref: false,
+                //         }
+                //     }
+                // }
+                // Lookup::FnHeader(def) => {
+                //     let header = &global_ctx.fn_headers[global_ctx.fns[def.0].header.0];
+                //     new_ty! {
+                //         MirTy {
+                //             kind: MirTyKind::Fn(MirTyFn {
+                //                 params: header.params.iter().map(|param| resolve_ty(global_ctx, ctx, binary_op_ty_map, &param.ty, false).unwrap()).collect(),
+                //                 return_ty: header.return_ty.as_ref().map(|ty| resolve_ty(global_ctx, ctx, binary_op_ty_map, &ty, false).unwrap()),
+                //             }),
+                //             source_kind: None,
+                //             is_ref: false,
+                //         }
+                //     }
+                // }
+                _ => unreachable!(),
             }
         }
     })
@@ -335,17 +494,9 @@ pub fn resolve_ty(
     ctx: Option<&InFnContext>,
     binary_op_ty_map: &BinaryOpTyMap,
     ty: &TyRef,
-    struct_only: bool,
 ) -> ResolveResult {
-    let mir_ty = resolve_sub_ty(
-        global_ctx,
-        ctx,
-        binary_op_ty_map,
-        ty.scope,
-        &ty.ty.sub_ty,
-        struct_only,
-    )?
-    .as_ty();
+    let mir_ty =
+        resolve_sub_ty(global_ctx, ctx, binary_op_ty_map, ty.scope, &ty.ty.sub_ty)?.as_ty();
 
     Ok(new_ty!(MirTy {
         kind: mir_ty.kind.clone(),

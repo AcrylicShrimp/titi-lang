@@ -141,6 +141,11 @@ pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -
                 span: expr.span,
             })
         }
+        ExprKind::ModuleMember(lhs, rhs) => ctx.push_expr(InFnExpr {
+            scope,
+            kind: InFnExprKind::ModuleMember(lhs, rhs),
+            span: expr.span,
+        }),
         ExprKind::SizeOf(lhs) => ctx.push_expr(InFnExpr {
             scope,
             kind: InFnExprKind::SizeOf(TyRef {

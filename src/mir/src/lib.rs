@@ -3,6 +3,7 @@ mod transform_expr;
 mod ty;
 
 pub use transform::*;
+pub use ty::*;
 
 use ast::{SymbolWithSpan, Vis};
 use hir::{InnerStructDef, ModuleDef, StructDef};

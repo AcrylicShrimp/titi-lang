@@ -318,6 +318,7 @@ pub enum ExprKind {
     Call(Box<Expr>, Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Member(Box<Expr>, SymbolWithSpan),
+    ModuleMember(SymbolWithSpan, SymbolWithSpan),
     SizeOf(Ty),
     AddrOf(Box<Expr>),
     TakeRef(Box<Expr>),

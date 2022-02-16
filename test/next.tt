@@ -1,8 +1,18 @@
 
+extern fn println(format ptr str) ptr str;
+
 pub struct Foo {
 
 }
 
 struct Bar {
 
+}
+
+fn test() i64 {
+  let a = 10byte;
+  let a = 10isize;
+  let a = 10usize;
+  let a = 10f64;
+  return a;
 }

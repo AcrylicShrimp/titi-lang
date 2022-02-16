@@ -1,5 +1,6 @@
 use clap::{App, Arg};
-use hir::{make_global, resolve};
+use hir::{make_global, resolve, InFnExprDef};
+use mir::{deduce_expr, BinaryOpTyMap};
 use std::path::PathBuf;
 
 fn main() {
@@ -22,7 +23,36 @@ fn main() {
 
     let global = make_global(resolved);
 
-    println!("{:?}", global);
+    // println!("{:?}", global);
+
+    let mut binary_op_map = BinaryOpTyMap::new();
+    // binary_op_map.insert(BinaryOp {
+    //     kind: BinaryOpKind::Add,
+    //     lhs: todo!(),
+    //     rhs: todo!(),
+    //     ty: todo!(),
+    // })
+
+    for function in &global.fns {
+        println!(
+            "=========== {} ===========",
+            global.fn_headers[function.header.0].name.symbol,
+        );
+        for (index, expr) in function.ctx.exprs.iter().enumerate() {
+            println!("expr({}): {:?}", index, expr);
+            println!(
+                "expr ty({}): {:?}",
+                index,
+                deduce_expr(
+                    &global,
+                    &function.ctx,
+                    expr.scope,
+                    &binary_op_map,
+                    InFnExprDef(index)
+                )
+            );
+        }
+    }
 
     // let ctx = init(PathBuf::from(entry));
     // let module = ctx.module("").unwrap();

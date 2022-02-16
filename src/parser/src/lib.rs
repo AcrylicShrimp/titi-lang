@@ -234,7 +234,8 @@ fn parse_sub_ty(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<SubT
             span: parser.span(),
         };
 
-        if parser.expect_kind(TokenKind::Dot) {
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::ModuleMember) {
             parser.expect_begin();
             if let Some(item) = parser.expect_id() {
                 let span = id.span.to(parser.span());
@@ -289,7 +290,7 @@ fn parse_use(parser: &mut Parser<impl Iterator<Item = Token>>) -> Result<Use, (S
         }
 
         parser.expect_begin();
-        if !parser.expect_kind(TokenKind::Dot) {
+        if !parser.expect_kind(TokenKind::ModuleMember) {
             return Err(parser.expect_else());
         }
 
@@ -1436,6 +1437,39 @@ fn parse_expr_object(
             } else {
                 return Err(parser.expect_else());
             }
+        } else if parser.expect_kind(TokenKind::ModuleMember) {
+            parser.expect_begin();
+            if let Some(next_id) = parser.expect_id() {
+                let next_name = SymbolWithSpan {
+                    symbol: next_id,
+                    span: parser.span(),
+                };
+
+                parser.expect_begin();
+                if parser.expect_kind(TokenKind::OpenBrace) {
+                    let inner_object = parse_expr_inner_object(parser)?;
+
+                    Ok(Expr {
+                        span: name.span.to(inner_object.span),
+                        kind: ExprKind::Object(Object {
+                            span: name.span.to(inner_object.span),
+                            ty: TyUserDef {
+                                span: name.span.to(next_name.span),
+                                module: Some(name),
+                                id: next_name,
+                            },
+                            fields: inner_object.fields,
+                        }),
+                    })
+                } else {
+                    Ok(Expr {
+                        span: name.span.to(next_name.span),
+                        kind: ExprKind::ModuleMember(name, next_name),
+                    })
+                }
+            } else {
+                return Err(parser.expect_else());
+            }
         } else {
             Ok(Expr {
                 span: name.span,
@@ -1531,13 +1565,33 @@ fn parse_expr_item(
             span: span.to(parser.span()),
         })
     } else if let Some(id) = parser.expect_id() {
-        Ok(Expr {
-            kind: ExprKind::Id(SymbolWithSpan {
-                symbol: id,
+        let span = parser.span();
+        parser.expect_begin();
+        if parser.expect_kind(TokenKind::ModuleMember) {
+            parser.expect_begin();
+            if let Some(sub_id) = parser.expect_id() {
+                Ok(Expr {
+                    kind: ExprKind::ModuleMember(
+                        SymbolWithSpan { symbol: id, span },
+                        SymbolWithSpan {
+                            symbol: sub_id,
+                            span: parser.span(),
+                        },
+                    ),
+                    span: span.to(parser.span()),
+                })
+            } else {
+                Err(parser.expect_else())
+            }
+        } else {
+            Ok(Expr {
+                kind: ExprKind::Id(SymbolWithSpan {
+                    symbol: id,
+                    span: parser.span(),
+                }),
                 span: parser.span(),
-            }),
-            span: parser.span(),
-        })
+            })
+        }
     } else if let Some(literal) = parser.expect_literal() {
         Ok(Expr {
             kind: ExprKind::Literal(Literal {

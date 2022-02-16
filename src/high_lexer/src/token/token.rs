@@ -22,6 +22,10 @@ impl Token {
 
     pub fn glue(&self, next: &Token) -> Option<Token> {
         let kind = match self.kind {
+            TokenKind::Colon => match next.kind {
+                TokenKind::Colon => TokenKind::ModuleMember,
+                _ => return None,
+            },
             TokenKind::Dot => match next.kind {
                 TokenKind::Dot => TokenKind::Rng,
                 _ => return None,
@@ -102,7 +106,6 @@ impl Token {
             | TokenKind::OpenBracket
             | TokenKind::CloseBracket
             | TokenKind::Comma
-            | TokenKind::Colon
             | TokenKind::Semicolon
             | TokenKind::AssignAdd
             | TokenKind::AssignSub
@@ -122,6 +125,7 @@ impl Token {
             | TokenKind::Ge
             | TokenKind::LogOr
             | TokenKind::LogAnd
+            | TokenKind::ModuleMember
             | TokenKind::Literal(..)
             | TokenKind::Id(..) => return None,
         };
