@@ -10,6 +10,7 @@ pub fn make_in_fn_object(ctx: &mut InFnContext, scope: InFnScopeDef, object: Obj
         ty: TyRefUserDef {
             scope: ScopeRef {
                 module: ctx.module,
+                function: Some(ctx.function),
                 scope: Some(scope),
             },
             ty: object.ty,

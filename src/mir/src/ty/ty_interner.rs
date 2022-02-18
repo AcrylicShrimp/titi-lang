@@ -1,4 +1,4 @@
-use crate::{MirTy, MirTyKind};
+use hir::{FunctionDef, InFnLetDef, InnerStructDef, StructDef};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
@@ -168,4 +168,185 @@ lazy_static! {
         }
     ])
     .into();
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MirTy {
+    pub kind: MirTyKind,
+    pub source_kind: Option<MirTySourceKind>,
+    pub is_ref: bool,
+}
+
+impl MirTy {
+    pub fn is_none(&self) -> bool {
+        self.kind == MirTyKind::None
+    }
+
+    pub fn is_addressable(&self) -> bool {
+        self.source_kind.is_some() || self.is_ref
+    }
+
+    pub fn is_same_with(&self, other: &MirTy) -> bool {
+        self.kind == other.kind && self.is_ref == other.is_ref
+    }
+
+    pub fn is_assignable_from(&self, other: &MirTy) -> bool {
+        if self.is_none() || other.is_none() {
+            return false;
+        }
+
+        if self.is_ref {
+            if !other.is_ref {
+                return false;
+            }
+
+            return self.kind == other.kind;
+        }
+
+        if other.is_ref {
+            return false;
+        }
+
+        match &self.kind {
+            MirTyKind::None => false,
+            MirTyKind::Bool => match other.kind {
+                MirTyKind::Bool
+                | MirTyKind::Byte
+                | MirTyKind::Char
+                | MirTyKind::I64
+                | MirTyKind::U64
+                | MirTyKind::Isize
+                | MirTyKind::Usize => true,
+                _ => false,
+            },
+            MirTyKind::Byte => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte => true,
+                _ => false,
+            },
+            MirTyKind::Char => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char => true,
+                _ => false,
+            },
+            MirTyKind::I64 => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char | MirTyKind::I64 => true,
+                _ => false,
+            },
+            MirTyKind::U64 => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char | MirTyKind::U64 => true,
+                _ => false,
+            },
+            MirTyKind::Isize => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Isize => true,
+                _ => false,
+            },
+            MirTyKind::Usize => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Usize => true,
+                _ => false,
+            },
+            MirTyKind::F64 => match other.kind {
+                MirTyKind::F64 => true,
+                _ => false,
+            },
+            MirTyKind::Str => match other.kind {
+                MirTyKind::Str => true,
+                _ => false,
+            },
+            MirTyKind::Ptr(lhs_ty) => match other.kind {
+                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Usize => true,
+                MirTyKind::Ptr(rhs_ty) => lhs_ty.as_ty().is_same_with(rhs_ty.as_ty()),
+                _ => false,
+            },
+            MirTyKind::Range(lhs_ty0, lhs_ty1) => match other.kind {
+                MirTyKind::Range(rhs_ty0, rhs_ty1) => {
+                    lhs_ty0.as_ty().is_same_with(rhs_ty0.as_ty())
+                        && lhs_ty1.as_ty().is_same_with(rhs_ty1.as_ty())
+                }
+                _ => false,
+            },
+            MirTyKind::RangeInclusive(lhs_ty0, lhs_ty1) => match other.kind {
+                MirTyKind::RangeInclusive(rhs_ty0, rhs_ty1) => {
+                    lhs_ty0.as_ty().is_same_with(rhs_ty0.as_ty())
+                        && lhs_ty1.as_ty().is_same_with(rhs_ty1.as_ty())
+                }
+                _ => false,
+            },
+            &MirTyKind::Struct(lhs_def) => match other.kind {
+                MirTyKind::Struct(rhs_def) => lhs_def == rhs_def,
+                _ => false,
+            },
+            &MirTyKind::InnerStruct(lhs_def) => match other.kind {
+                MirTyKind::InnerStruct(rhs_def) => lhs_def == rhs_def,
+                _ => false,
+            },
+            MirTyKind::Fn(lhs_fn) => match &other.kind {
+                MirTyKind::Fn(rhs_fn) => {
+                    match lhs_fn.return_ty {
+                        Some(lhs_return_ty) => {
+                            return match rhs_fn.return_ty {
+                                Some(rhs_return_ty) => {
+                                    lhs_return_ty.as_ty().is_same_with(rhs_return_ty.as_ty())
+                                }
+                                None => false,
+                            };
+                        }
+                        None => {
+                            if !rhs_fn.return_ty.is_none() {
+                                return false;
+                            }
+                        }
+                    }
+
+                    if lhs_fn.params.len() != rhs_fn.params.len() {
+                        return false;
+                    }
+
+                    for index in 0..lhs_fn.params.len() {
+                        if !lhs_fn.params[index]
+                            .as_ty()
+                            .is_same_with(&rhs_fn.params[index].as_ty())
+                        {
+                            return false;
+                        }
+                    }
+
+                    true
+                }
+                _ => false,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MirTyKind {
+    None,
+    Bool,
+    Byte,
+    Char,
+    I64,
+    U64,
+    Isize,
+    Usize,
+    F64,
+    Str,
+    Ptr(Ty),
+    Range(Ty, Ty),
+    RangeInclusive(Ty, Ty),
+    Struct(StructDef),
+    InnerStruct(InnerStructDef),
+    Fn(MirTyFn),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MirTySourceKind {
+    Deref,
+    Let(FunctionDef, InFnLetDef),
+    Struct(StructDef, usize),
+    InnerStruct(InnerStructDef, usize),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MirTyFn {
+    pub params: Vec<Ty>,
+    pub return_ty: Option<Ty>,
 }

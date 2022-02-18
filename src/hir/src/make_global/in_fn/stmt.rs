@@ -31,6 +31,7 @@ pub fn make_in_fn_stmt(
                 global_ctx,
                 ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(new_scope),
                 },
                 r#struct,
@@ -52,6 +53,7 @@ pub fn make_in_fn_stmt(
                 global_ctx,
                 ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(new_scope),
                 },
                 function,
@@ -234,6 +236,7 @@ fn make_in_fn_let(ctx: &mut InFnContext, scope: InFnScopeDef, r#let: Let) -> InF
             LetKind::Ty(ty) => InFnLetKind::Ty(TyRef {
                 scope: ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(scope),
                 },
                 ty,
@@ -243,6 +246,7 @@ fn make_in_fn_let(ctx: &mut InFnContext, scope: InFnScopeDef, r#let: Let) -> InF
                 TyRef {
                     scope: ScopeRef {
                         module: ctx.module,
+                        function: Some(ctx.function),
                         scope: Some(scope),
                     },
                     ty,

@@ -5,8 +5,7 @@ mod ty;
 pub use transform::*;
 pub use ty::*;
 
-use ast::{SymbolWithSpan, Vis};
-use hir::{InnerStructDef, ModuleDef, StructDef};
+use ast::SymbolWithSpan;
 use span::Span;
 use ty::Ty;
 
@@ -70,7 +69,6 @@ impl MirContext {
 
 #[derive(Debug)]
 pub struct MirFunctionContext {
-    pub module: ModuleDef,
     pub header: MirFunctionHeaderDef,
     pub lets: Vec<MirLet>,
     pub stmts: Vec<MirStmt>,
@@ -86,7 +84,6 @@ pub struct MirStruct {
 
 #[derive(Debug)]
 pub struct MirStructField {
-    pub vis: Option<Vis>,
     pub name: SymbolWithSpan,
     pub kind: MirStructFieldKind,
     pub span: Span,
@@ -162,6 +159,7 @@ pub struct MirScope {
 
 #[derive(Debug)]
 pub enum MirScopeKind {
+    Block,
     Let(MirLetDef),
     Label(MirStmtDef),
 }
@@ -170,190 +168,15 @@ pub enum MirScopeKind {
 pub enum MirStmtKind {
     Scope(MirScope),
     Expr(MirExprDef),
-    Goto(MirStmtDef),
-    GotoIf(MirStmtDef, MirExprDef),
+    Goto(MirStmtDef, GotoDirection),
+    GotoIf(MirExprDef, MirStmtDef, GotoDirection),
     Return(Option<MirExprDef>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MirTy {
-    pub kind: MirTyKind,
-    pub source_kind: Option<MirTySourceKind>,
-    pub is_ref: bool,
-}
-
-impl MirTy {
-    pub fn is_none(&self) -> bool {
-        self.kind == MirTyKind::None
-    }
-
-    pub fn is_addressable(&self) -> bool {
-        self.source_kind.is_some() || self.is_ref
-    }
-
-    pub fn is_same_with(&self, other: &MirTy) -> bool {
-        self.kind == other.kind && self.is_ref == other.is_ref
-    }
-
-    pub fn is_assignable_from(&self, other: &MirTy) -> bool {
-        if self.is_none() || other.is_none() {
-            return false;
-        }
-
-        if self.is_ref {
-            if !other.is_ref {
-                return false;
-            }
-
-            return self.kind == other.kind;
-        }
-
-        if other.is_ref {
-            return false;
-        }
-
-        match &self.kind {
-            MirTyKind::None => false,
-            MirTyKind::Bool => match other.kind {
-                MirTyKind::Bool
-                | MirTyKind::Byte
-                | MirTyKind::Char
-                | MirTyKind::I64
-                | MirTyKind::U64
-                | MirTyKind::Isize
-                | MirTyKind::Usize => true,
-                _ => false,
-            },
-            MirTyKind::Byte => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte => true,
-                _ => false,
-            },
-            MirTyKind::Char => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char => true,
-                _ => false,
-            },
-            MirTyKind::I64 => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char | MirTyKind::I64 => true,
-                _ => false,
-            },
-            MirTyKind::U64 => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Char | MirTyKind::U64 => true,
-                _ => false,
-            },
-            MirTyKind::Isize => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Isize => true,
-                _ => false,
-            },
-            MirTyKind::Usize => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Usize => true,
-                _ => false,
-            },
-            MirTyKind::F64 => match other.kind {
-                MirTyKind::F64 => true,
-                _ => false,
-            },
-            MirTyKind::Str => match other.kind {
-                MirTyKind::Str => true,
-                _ => false,
-            },
-            MirTyKind::Ptr(lhs_ty) => match other.kind {
-                MirTyKind::Bool | MirTyKind::Byte | MirTyKind::Usize => true,
-                MirTyKind::Ptr(rhs_ty) => lhs_ty.as_ty().is_same_with(rhs_ty.as_ty()),
-                _ => false,
-            },
-            MirTyKind::Range(lhs_ty0, lhs_ty1) => match other.kind {
-                MirTyKind::Range(rhs_ty0, rhs_ty1) => {
-                    lhs_ty0.as_ty().is_same_with(rhs_ty0.as_ty())
-                        && lhs_ty1.as_ty().is_same_with(rhs_ty1.as_ty())
-                }
-                _ => false,
-            },
-            MirTyKind::RangeInclusive(lhs_ty0, lhs_ty1) => match other.kind {
-                MirTyKind::RangeInclusive(rhs_ty0, rhs_ty1) => {
-                    lhs_ty0.as_ty().is_same_with(rhs_ty0.as_ty())
-                        && lhs_ty1.as_ty().is_same_with(rhs_ty1.as_ty())
-                }
-                _ => false,
-            },
-            &MirTyKind::Struct(lhs_def) => match other.kind {
-                MirTyKind::Struct(rhs_def) => lhs_def == rhs_def,
-                _ => false,
-            },
-            &MirTyKind::InnerStruct(lhs_def) => match other.kind {
-                MirTyKind::InnerStruct(rhs_def) => lhs_def == rhs_def,
-                _ => false,
-            },
-            MirTyKind::Fn(lhs_fn) => match &other.kind {
-                MirTyKind::Fn(rhs_fn) => {
-                    match lhs_fn.return_ty {
-                        Some(lhs_return_ty) => {
-                            return match rhs_fn.return_ty {
-                                Some(rhs_return_ty) => {
-                                    lhs_return_ty.as_ty().is_same_with(rhs_return_ty.as_ty())
-                                }
-                                None => false,
-                            };
-                        }
-                        None => {
-                            if !rhs_fn.return_ty.is_none() {
-                                return false;
-                            }
-                        }
-                    }
-
-                    if lhs_fn.params.len() != rhs_fn.params.len() {
-                        return false;
-                    }
-
-                    for index in 0..lhs_fn.params.len() {
-                        if !lhs_fn.params[index]
-                            .as_ty()
-                            .is_same_with(&rhs_fn.params[index].as_ty())
-                        {
-                            return false;
-                        }
-                    }
-
-                    true
-                }
-                _ => false,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MirTyKind {
-    None,
-    Bool,
-    Byte,
-    Char,
-    I64,
-    U64,
-    Isize,
-    Usize,
-    F64,
-    Str,
-    Ptr(Ty),
-    Range(Ty, Ty),
-    RangeInclusive(Ty, Ty),
-    Struct(StructDef),
-    InnerStruct(InnerStructDef),
-    Fn(MirTyFn),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MirTySourceKind {
-    Deref,
-    Let(MirScopeDef),
-    Struct(MirStructDef, usize),
-    InnerStruct(MirInnerStructDef, usize),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MirTyFn {
-    pub params: Vec<Ty>,
-    pub return_ty: Option<Ty>,
+#[derive(Debug)]
+pub enum GotoDirection {
+    Before,
+    After,
 }
 
 #[derive(Debug)]
@@ -365,30 +188,71 @@ pub struct MirExpr {
 
 #[derive(Debug)]
 pub enum MirExprKind {
-    Call(MirExprCall),
-    Lit(MirExprLit),
-}
-
-#[derive(Debug)]
-pub struct MirExprCall {
-    pub target_kind: MirExprCallTargetKind,
-    pub params: Vec<MirExprDef>,
-}
-
-#[derive(Debug)]
-pub enum MirExprCallTargetKind {
+    Struct(MirStructDef),
     Fn(MirFunctionDef),
     FnHeader(MirFunctionHeaderDef),
-    Intrinsic(MirIntrinsic),
+    Let(MirLetDef),
+    Param(MirFnHeader, usize),
+    Rng(MirExprDef, MirExprDef),
+    RngInclusive(MirExprDef, MirExprDef),
+    Eq(MirExprDef, MirExprDef),
+    Ne(MirExprDef, MirExprDef),
+    Lt(MirExprDef, MirExprDef),
+    Gt(MirExprDef, MirExprDef),
+    Le(MirExprDef, MirExprDef),
+    Ge(MirExprDef, MirExprDef),
+    Neg(MirExprDef),
+    Add(MirExprDef, MirExprDef),
+    Sub(MirExprDef, MirExprDef),
+    Mul(MirExprDef, MirExprDef),
+    Div(MirExprDef, MirExprDef),
+    Mod(MirExprDef, MirExprDef),
+    Shl(MirExprDef, MirExprDef),
+    Shr(MirExprDef, MirExprDef),
+    BitOr(MirExprDef, MirExprDef),
+    BitAnd(MirExprDef, MirExprDef),
+    BitXor(MirExprDef, MirExprDef),
+    BitNot(MirExprDef),
+    LogOr(MirExprDef, MirExprDef),
+    LogAnd(MirExprDef, MirExprDef),
+    LogNot(MirExprDef),
+    Cast(MirExprDef, Ty),
+    Object(MirObject),
+    Call(MirExprDef, Vec<MirExprDef>),
+    Index(MirExprDef, MirExprDef),
+    Member(MirExprDef, SymbolWithSpan),
+    SizeOf(Ty),
+    AddrOf(MirExprDef),
+    TakeRef(MirExprDef),
+    Deref(MirExprDef),
+    Literal(MirExprLit),
 }
 
-#[derive(Debug)]
-pub enum MirIntrinsic {
-    Alloc,
-    Load,
-    Store,
-    AddUnchecked,
-    SubUnchecked,
+#[derive(Debug, Clone, Hash)]
+pub struct MirObject {
+    pub ty: Ty,
+    pub fields: Vec<MirObjectField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct MirObjectField {
+    pub name: SymbolWithSpan,
+    pub kind: MirObjectFieldKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum MirObjectFieldKind {
+    Expr(MirExprDef),
+    InnerObject(MirInnerObject),
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct MirInnerObject {
+    pub ty: Ty,
+    pub fields: Vec<MirObjectField>,
+    pub span: Span,
 }
 
 #[derive(Debug)]

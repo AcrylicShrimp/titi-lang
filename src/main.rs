@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use hir::{make_global, resolve, InFnExprDef};
-use mir::{deduce_expr, BinaryOpTyMap};
+use mir::{deduce_expr, transform, BinaryOpTyMap};
 use std::path::PathBuf;
 
 fn main() {
@@ -33,26 +33,28 @@ fn main() {
     //     ty: todo!(),
     // })
 
-    for function in &global.fns {
-        println!(
-            "=========== {} ===========",
-            global.fn_headers[function.header.0].name.symbol,
-        );
-        for (index, expr) in function.ctx.exprs.iter().enumerate() {
-            println!("expr({}): {:?}", index, expr);
-            println!(
-                "expr ty({}): {:?}",
-                index,
-                deduce_expr(
-                    &global,
-                    &function.ctx,
-                    expr.scope,
-                    &binary_op_map,
-                    InFnExprDef(index)
-                )
-            );
-        }
-    }
+    // for function in &global.fns {
+    //     println!(
+    //         "=========== {} ===========",
+    //         global.fn_headers[function.header.0].name.symbol,
+    //     );
+    //     for (index, expr) in function.ctx.exprs.iter().enumerate() {
+    //         println!("expr({}): {:?}", index, expr);
+    //         println!(
+    //             "expr ty({}): {:?}",
+    //             index,
+    //             deduce_expr(
+    //                 &global,
+    //                 &function.ctx,
+    //                 expr.scope,
+    //                 &binary_op_map,
+    //                 InFnExprDef(index)
+    //             )
+    //         );
+    //     }
+    // }
+
+    let mir_context = transform(global);
 
     // let ctx = init(PathBuf::from(entry));
     // let module = ctx.module("").unwrap();

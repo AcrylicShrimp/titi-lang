@@ -40,6 +40,7 @@ pub struct TyRefUserDef {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ScopeRef {
     pub module: ModuleDef,
+    pub function: Option<FunctionDef>,
     pub scope: Option<InFnScopeDef>,
 }
 
@@ -147,6 +148,7 @@ pub fn make_global(mut resolved: ResolvedContext) -> GlobalContext {
                 &mut context,
                 ScopeRef {
                     module: module.def,
+                    function: None,
                     scope: None,
                 },
                 structs[r#struct.def.0].take().unwrap().1,
@@ -158,6 +160,7 @@ pub fn make_global(mut resolved: ResolvedContext) -> GlobalContext {
                 &mut context,
                 ScopeRef {
                     module: module.def,
+                    function: None,
                     scope: None,
                 },
                 fns[r#fn.def.0].take().unwrap().1,
@@ -169,6 +172,7 @@ pub fn make_global(mut resolved: ResolvedContext) -> GlobalContext {
                 &mut context,
                 ScopeRef {
                     module: module.def,
+                    function: None,
                     scope: None,
                 },
                 fn_headers[header.def.0].take().unwrap().1,

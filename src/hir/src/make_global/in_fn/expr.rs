@@ -102,6 +102,7 @@ pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -
                     TyRef {
                         scope: ScopeRef {
                             module: ctx.module,
+                            function: Some(ctx.function),
                             scope: Some(scope),
                         },
                         ty: rhs,
@@ -151,6 +152,7 @@ pub fn make_in_fn_expr(ctx: &mut InFnContext, scope: InFnScopeDef, expr: Expr) -
             kind: InFnExprKind::SizeOf(TyRef {
                 scope: ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(scope),
                 },
                 ty: lhs,

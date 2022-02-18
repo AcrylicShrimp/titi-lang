@@ -37,9 +37,10 @@ pub struct InFnExprDef(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InFnLitDef(pub usize);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnContext {
     pub module: ModuleDef,
+    pub function: FunctionDef,
     pub header: FunctionHeaderDef,
     pub scopes: Vec<InFnScope>,
     pub blocks: Vec<InFnBlock>,
@@ -53,9 +54,10 @@ pub struct InFnContext {
 }
 
 impl InFnContext {
-    pub fn new(module: ModuleDef, header: FunctionHeaderDef) -> Self {
+    pub fn new(module: ModuleDef, function: FunctionDef, header: FunctionHeaderDef) -> Self {
         Self {
             module,
+            function,
             header,
             scopes: Vec::new(),
             blocks: Vec::new(),
@@ -124,7 +126,7 @@ impl InFnContext {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnScope {
     pub module: ModuleDef,
     pub parent: Option<InFnScopeDef>,
@@ -140,27 +142,27 @@ pub enum InFnScopeKind {
     For(InFnForDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnBlock {
     pub stmts: Vec<InFnStmtDef>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnLet {
     pub name: SymbolWithSpan,
     pub kind: InFnLetKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnLetKind {
     Ty(TyRef),
     Expr(InFnExprDef),
     TyExpr(TyRef, InFnExprDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnIf {
     pub cond: InFnExprDef,
     pub then_body: InFnBlockDef,
@@ -168,40 +170,40 @@ pub struct InFnIf {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnElse {
     pub kind: InFnElseKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnElseKind {
     Else(InFnBlockDef),
     ElseIf(InFnIfDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnFor {
     pub kind: InFnForKind,
     pub body: InFnBlockDef,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnForKind {
     Loop,
     While(InFnExprDef),
     ForIn(SymbolWithSpan, InFnExprDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnStmt {
     pub scope: InFnScopeDef,
     pub kind: InFnStmtKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnStmtKind {
     ScopeBegin(InFnScopeDef),
     ScopeEnd(InFnScopeDef),
@@ -216,23 +218,23 @@ pub enum InFnStmtKind {
     Expr(InFnExprDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnStmtBreak {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnStmtContinue {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnStmtReturn {
     pub expr: Option<InFnExprDef>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnStmtAssign {
     pub lhs: InFnExprDef,
     pub rhs: InFnExprDef,
@@ -256,14 +258,14 @@ pub enum InFnStmtAssignKind {
     BitNot,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnExpr {
     pub scope: InFnScopeDef,
     pub kind: InFnExprKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnExprKind {
     Rng(InFnExprDef, InFnExprDef),
     RngInclusive(InFnExprDef, InFnExprDef),
@@ -302,27 +304,27 @@ pub enum InFnExprKind {
     Literal(InFnLitDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnObject {
     pub ty: TyRefUserDef,
     pub fields: Vec<InFnObjectField>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnObjectField {
     pub name: SymbolWithSpan,
     pub kind: InFnObjectFieldKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InFnObjectFieldKind {
     Expr(InFnExprDef),
     InnerObject(InFnInnerObject),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InFnInnerObject {
     pub fields: Vec<InFnObjectField>,
     pub span: Span,

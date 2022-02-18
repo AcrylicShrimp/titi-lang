@@ -234,6 +234,7 @@ pub fn deduce_expr(
                 Some(ctx),
                 ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(scope),
                 },
                 &lhs.ty.ty,
@@ -325,6 +326,7 @@ pub fn deduce_expr(
                 Some(ctx),
                 ScopeRef {
                     module: ctx.module,
+                    function: Some(ctx.function),
                     scope: Some(scope),
                 },
                 &TyUserDef {
