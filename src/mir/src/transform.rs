@@ -1,11 +1,11 @@
 use crate::{
     resolve_ty, BinaryOpTyMap, MirContext, MirFn, MirFnHeader, MirFunctionDef,
-    MirFunctionHeaderDef, MirInnerStruct, MirInnerStructDef, MirInnerStructField, MirStmt,
-    MirStruct, MirStructDef, MirStructField, MirStructFieldKind,
+    MirFunctionHeaderDef, MirInnerStruct, MirInnerStructDef, MirInnerStructField, MirScope,
+    MirScopeDef, MirStmt, MirStruct, MirStructDef, MirStructField, MirStructFieldKind,
 };
 use hir::{
     GlobalContext, GlobalFn, GlobalFnHeader, GlobalInnerStruct, GlobalStruct,
-    GlobalStructFieldKind, InFnContext, InFnStmt,
+    GlobalStructFieldKind, InFnContext, InFnStmt, InFnStmtKind,
 };
 
 pub fn transform(hir: GlobalContext) -> MirContext {
@@ -183,5 +183,23 @@ fn transform_stmt(
     binary_op_map: &BinaryOpTyMap,
     item: &InFnStmt,
 ) -> MirStmt {
-    todo!()
+    match &item.kind {
+        &InFnStmtKind::ScopeBegin(def) => MirStmt {
+            scope: (),
+            kind: todo!(),
+            span: todo!(),
+        },
+        &InFnStmtKind::ScopeEnd(def) => todo!(),
+        &InFnStmtKind::Let(def) => todo!(),
+        &InFnStmtKind::Block(def) => todo!(),
+        &InFnStmtKind::If(def) => todo!(),
+        &InFnStmtKind::For(def) => todo!(),
+        InFnStmtKind::Break(item) => todo!(),
+        InFnStmtKind::Continue(item) => todo!(),
+        InFnStmtKind::Return(item) => todo!(),
+        InFnStmtKind::Assign(item) => todo!(),
+        &InFnStmtKind::Expr(def) => todo!(),
+    }
 }
+
+fn transform_stmt_scope() -> MirScope {}

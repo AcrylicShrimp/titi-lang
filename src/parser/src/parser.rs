@@ -117,7 +117,14 @@ where
             }
         };
         self.expects.clear();
-        (err, self.span)
+        (
+            err,
+            self.cursor
+                .first()
+                .as_ref()
+                .map(|token| token.span())
+                .unwrap_or(self.span),
+        )
     }
 
     pub fn consume(&mut self) {

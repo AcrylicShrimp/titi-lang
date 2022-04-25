@@ -166,7 +166,8 @@ pub enum MirScopeKind {
 
 #[derive(Debug)]
 pub enum MirStmtKind {
-    Scope(MirScope),
+    ScopeBegin(MirScope),
+    ScopeEnd(MirScope),
     Expr(MirExprDef),
     Goto(MirStmtDef, GotoDirection),
     GotoIf(MirExprDef, MirStmtDef, GotoDirection),

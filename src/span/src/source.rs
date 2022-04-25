@@ -53,7 +53,14 @@ impl Source {
     }
 
     pub fn line_span(&self, line: u32) -> Span {
-        Span::new(self.lines[line as usize], self.lines[line as usize + 1])
+        Span::new(
+            self.lines[line as usize],
+            if line as usize + 1 == self.lines.len() {
+                self.span.high()
+            } else {
+                self.lines[line as usize + 1]
+            },
+        )
     }
 
     pub fn find_line(&self, pos: Pos) -> u32 {
